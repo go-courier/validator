@@ -70,6 +70,7 @@ enumeration
 
 regexp
 	@string/\w+/ // string values should match \w+
+since we use / as wrapper for regexp, we need to use \ to escape /
 
 length mode in parameter
 	@string<length> // use string length directly
