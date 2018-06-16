@@ -8,17 +8,47 @@ import (
 	"unicode"
 )
 
-// @uint<BIT_SIZE>[from,to]
-// @uint<BIT_SIZE>[from,to]
-// @uint<BIT_SIZE>[from,to)
-// @uint<BIT_SIZE>{%multipleOf}
-//
-// aliases:
-// uint8 = uint<8>
-// uint16 = uint<16>
-// uint32 = uint<8>
-// uint64 = uint<64>
-// uint<53> for JavaScript https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER
+/*
+Validator for uint
+
+Rules:
+
+ranges
+	@uint[min,max]
+	@uint[1,10] // value should large or equal than 1 and less or equal than 10
+	@uint(1,10] // value should large than 1 and less or equal than 10
+	@uint[1,10) // value should large or equal than 1
+
+	@uint[1,)  // value should large or equal than 1 and less than the maxinum of int32
+	@uint[,1)  // value should less than 1 and large or equal than 0
+	@uint  // value should less or equal than maxinum of int32 and large or equal than 0
+
+enumeration
+	@uint{1,2,3} // should one of these values
+
+multiple of some int value
+	@uint{%multipleOf}
+	@uint{%2} // should be multiple of 2
+
+bit size in parameter
+	@uint<8>
+	@uint<16>
+	@uint<32>
+	@uint<64>
+
+composes
+	@uint<8>[1,]
+
+aliases:
+	@uint8 = @uint<8>
+	@uint16 = @uint<16>
+	@uint32 = @uint<32>
+	@uint64 = @uint<64>
+
+Tips:
+for JavaScript https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MIN_SAFE_INTEGER
+	uint<53>
+*/
 type UintValidator struct {
 	BitSize uint
 

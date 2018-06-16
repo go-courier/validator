@@ -1,12 +1,24 @@
 package validator
 
 import (
-	"fmt"
 	"reflect"
+	"fmt"
 )
 
-// @map<KEY_RULE, ELEM_RULE>[from,to]
-// @map<KEY_RULE, ELEM_RULE>[length]
+/*
+Validator for map
+
+Rules:
+	@map<KEY_RULE, ELEM_RULE>[minSize,maxSize]
+	@map<KEY_RULE, ELEM_RULE>[length]
+
+	@map<@string{A,B,C},@int[0]>[,100]
+
+Notice:
+
+Key rule and elem rule need to manually validate by other validator.
+This validator just validate min properties and max properties
+*/
 type MapValidator struct {
 	MinProperties uint64
 	MaxProperties *uint64

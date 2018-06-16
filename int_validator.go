@@ -10,17 +10,47 @@ import (
 	"github.com/go-courier/ptr"
 )
 
-// @int<BIT_SIZE>[from,to]
-// @int<BIT_SIZE>[from,to]
-// @int<BIT_SIZE>[from,to)
-// @int<BIT_SIZE>{%multipleOf}
-//
-// aliases:
-// int8 = int<8>
-// int16 = int<16>
-// int32 = int<8>
-// int64 = int<64>
-// int<53> for JavaScript https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MIN_SAFE_INTEGER
+/*
+Validator for int
+
+Rules:
+
+ranges
+	@int[min,max]
+	@int[1,10] // value should large or equal than 1 and less or equal than 10
+	@int(1,10] // value should large than 1 and less or equal than 10
+	@int[1,10) // value should large or equal than 1
+
+	@int[1,)  // value should large or equal than 1 and less than the maxinum of int32
+	@int[,1)  // value should less than 1 and large or equal than the mininum of int32
+	@int  // value should less or equal than maxinum of int32 and large or equal than the mininum of int32
+
+enumeration
+	@int{1,2,3} // should one of these values
+
+multiple of some int value
+	@int{%multipleOf}
+	@int{%2} // should be multiple of 2
+
+bit size in parameter
+	@int<8>
+	@int<16>
+	@int<32>
+	@int<64>
+
+composes
+	@int<8>[1,]
+
+aliases:
+	@int8 = @int<8>
+	@int16 = @int<16>
+	@int32 = @int<32>
+	@int64 = @int<64>
+
+Tips:
+for JavaScript https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MAX_SAFE_INTEGER and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/MIN_SAFE_INTEGER
+	int<53>
+*/
 type IntValidator struct {
 	BitSize uint
 

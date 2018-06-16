@@ -5,8 +5,20 @@ import (
 	"reflect"
 )
 
-// @slice<ELEM_RULE>[from,to]
-// @slice<ELEM_RULE>[length]
+/*
+Validator for slice
+
+Rules:
+	@slice<ELEM_RULE>[minLen,maxLen]
+	@slice<ELEM_RULE>[length]
+
+	@slice<@string{A,B,C}>[,100]
+
+Notice:
+
+Key rule and elem rule need to manually validate by other validator.
+This validator just validate min items and max items
+*/
 type SliceValidator struct {
 	ElemRule *Rule
 	MinItems uint64

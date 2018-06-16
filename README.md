@@ -35,10 +35,10 @@
 
 ## Built-in rules
 
-TODO for docs
+* [@string](https://godoc.org/github.com/go-courier/validator#StringValidator)
+* [@int](https://godoc.org/github.com/go-courier/validator#IntValidator)
+* [@uint](https://godoc.org/github.com/go-courier/validator#UintValidator)
+* [@float](https://godoc.org/github.com/go-courier/validator#FloatValidator)
+* [@map](https://godoc.org/github.com/go-courier/validator#MapValidator)
+* [@slice](https://godoc.org/github.com/go-courier/validator#SliceValidator)
 
-## `@string`
-
-```
-
-```
