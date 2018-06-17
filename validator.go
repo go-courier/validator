@@ -51,7 +51,7 @@ func (validatorSet *ValidatorSet) Compile(rule []byte) (Validator, error) {
 	if !ok {
 		return nil, fmt.Errorf("%s not match any validator", r.Name)
 	}
-	return validator, nil
+	return validator.New(r)
 }
 
 func NewValidatorFactory(validators ...Validator) *ValidatorFactory {
