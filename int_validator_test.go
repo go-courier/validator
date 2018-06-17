@@ -2,94 +2,137 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"testing"
 
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/go-courier/validator/rules"
 )
 
 func TestIntValidator_New(t *testing.T) {
-	cases := []struct {
+	caseSet := map[reflect.Type][]struct {
 		rule   string
 		expect *IntValidator
 	}{
-		{"@int[1,1000]", &IntValidator{
-			Minimum: ptr.Int64(1),
-			Maximum: ptr.Int64(1000),
-		}},
-		{"@int[1,1000)", &IntValidator{
-			Minimum:          ptr.Int64(1),
-			Maximum:          ptr.Int64(1000),
-			ExclusiveMaximum: true,
-		}},
-		{"@int(1,1000]", &IntValidator{
-			Minimum:          ptr.Int64(1),
-			Maximum:          ptr.Int64(1000),
-			ExclusiveMinimum: true,
-		}},
-		{"@int[1,]", &IntValidator{
-			Minimum: ptr.Int64(1),
-			Maximum: ptr.Int64(MaxInt(32)),
-		}},
-		{"@int[1]", &IntValidator{
-			Minimum: ptr.Int64(1),
-			Maximum: ptr.Int64(1),
-		}},
-		{"@int[,1]", &IntValidator{
-			Maximum: ptr.Int64(1),
-		}},
-		{"@int16{1,2}", &IntValidator{
-			BitSize: 16,
-			Enums: map[int64]string{
-				1: "1",
-				2: "2",
-			},
-		}},
-		{"@int<53>", &IntValidator{
-			BitSize: 53,
-			Maximum: ptr.Int64(MaxInt(53)),
-		}},
-		{"@int16{%2}", &IntValidator{
-			BitSize:    16,
-			MultipleOf: 2,
-		}},
+		reflect.TypeOf(int8(1)): {
+			{"@int8[1,]", &IntValidator{
+				BitSize: 8,
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(MaxInt(8)),
+			}},
+		},
+		reflect.TypeOf(int16(1)): {
+			{"@int16[1,]", &IntValidator{
+				BitSize: 16,
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(MaxInt(16)),
+			}},
+		},
+		reflect.TypeOf(int32(1)): {
+			{"@int[1,]", &IntValidator{
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(MaxInt(32)),
+			}},
+			{"@int[1,1000)", &IntValidator{
+				Minimum:          ptr.Int64(1),
+				Maximum:          ptr.Int64(1000),
+				ExclusiveMaximum: true,
+			}},
+			{"@int(1,1000]", &IntValidator{
+				Minimum:          ptr.Int64(1),
+				Maximum:          ptr.Int64(1000),
+				ExclusiveMinimum: true,
+			}},
+			{"@int[1,]", &IntValidator{
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(MaxInt(32)),
+			}},
+			{"@int[1]", &IntValidator{
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(1),
+			}},
+			{"@int[,1]", &IntValidator{
+				Maximum: ptr.Int64(1),
+			}},
+			{"@int16{1,2}", &IntValidator{
+				BitSize: 16,
+				Enums: map[int64]string{
+					1: "1",
+					2: "2",
+				},
+			}},
+			{"@int16{%2}", &IntValidator{
+				BitSize:    16,
+				MultipleOf: 2,
+			}},
+		},
+		reflect.TypeOf(int64(1)): {
+			{"@int64[1,1000]", &IntValidator{
+				BitSize: 64,
+				Minimum: ptr.Int64(1),
+				Maximum: ptr.Int64(1000),
+			}},
+			{"@int<53>", &IntValidator{
+				BitSize: 53,
+				Maximum: ptr.Int64(MaxInt(53)),
+			}},
+		},
 	}
 
-	for i := range cases {
-		c := cases[i]
-		c.expect.SetDefaults()
+	for tpe, cases := range caseSet {
+		for _, c := range cases {
+			c.expect.SetDefaults()
 
-		t.Run(fmt.Sprintf("%s|%s", c.rule, c.expect.String()), func(t *testing.T) {
-			rule := MustParseRuleString(c.rule)
-			v, err := c.expect.New(rule)
-			assert.NoError(t, err)
-			assert.Equal(t, c.expect, v)
-		})
+			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
+				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, nil)
+				assert.NoError(t, err)
+				assert.Equal(t, c.expect, v)
+			})
+		}
 	}
 }
 
 func TestIntValidator_NewFailed(t *testing.T) {
-	invalidRules := []string{
-		"@int<32,2123>",
-		"@int<@string>",
-		"@int<66>",
-		"@int[1,0]",
-		"@int[1,-2]",
-		"@int[a,]",
-		"@int[,a]",
-		"@int[a]",
-		`@int8{%a}`,
-		`@int8{A,B,C}`,
+	invalidRules := map[reflect.Type][]string{
+		reflect.TypeOf(float32(1)): {
+			"@int16",
+		},
+		reflect.TypeOf(int8(1)): {
+			"@int16",
+		},
+		reflect.TypeOf(int16(1)): {
+			"@int",
+		},
+		reflect.TypeOf(int32(1)): {
+			"@int64",
+		},
+		reflect.TypeOf(int(1)): {
+			"@int<32,2123>",
+			"@int<@string>",
+			"@int<66>",
+			"@int[1,0]",
+			"@int[1,-2]",
+			"@int[a,]",
+			"@int[,a]",
+			"@int[a]",
+			`@int8{%a}`,
+			`@int8{A,B,C}`,
+		},
 	}
 
-	for i := range invalidRules {
-		rule := MustParseRuleString(invalidRules[i])
-		validator := &IntValidator{}
+	validator := &IntValidator{}
 
-		t.Run(fmt.Sprintf("validate new failed: %s", rule.Bytes()), func(t *testing.T) {
-			_, err := validator.New(rule)
-			assert.Error(t, err)
-		})
+	for tpe := range invalidRules {
+		for _, r := range invalidRules[tpe] {
+			rule := rules.MustParseRuleString(r)
+
+			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
+				_, err := validator.New(rule, tpe, nil)
+				assert.Error(t, err)
+			})
+		}
 	}
 }
 
@@ -99,7 +142,7 @@ func TestIntValidator_Validate(t *testing.T) {
 		validator *IntValidator
 		desc      string
 	}{
-		{[]interface{}{int(1), int(2), int(3)}, &IntValidator{
+		{[]interface{}{reflect.ValueOf(int(1)), int(2), int(3)}, &IntValidator{
 			Enums: map[int64]string{
 				1: "1",
 				2: "2",
@@ -140,7 +183,7 @@ func TestIntValidator_ValidateFailed(t *testing.T) {
 		validator *IntValidator
 		desc      string
 	}{
-		{[]interface{}{uint(2), "string"}, &IntValidator{
+		{[]interface{}{uint(2), "string", reflect.ValueOf("1")}, &IntValidator{
 			BitSize: 64,
 		}, "unsupported type"},
 		{[]interface{}{int(4), int(5), int(6)}, &IntValidator{

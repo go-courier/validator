@@ -8,6 +8,9 @@ import (
 	"strconv"
 
 	"github.com/go-courier/ptr"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 /*
@@ -73,6 +76,10 @@ func (FloatValidator) Names() []string {
 }
 
 func (validator *FloatValidator) Validate(v interface{}) error {
+	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
+		v = rv.Interface()
+	}
+
 	val := float64(0)
 	switch i := v.(type) {
 	case float32:
@@ -80,7 +87,7 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 	case float64:
 		val = i
 	default:
-		return NewUnsupportedTypeError("float32 or float64", reflect.TypeOf(v))
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
 	}
 
 	validator.SetDefaults()
@@ -149,7 +156,7 @@ func round(f float64, n int) float64 {
 	return res
 }
 
-func (FloatValidator) New(rule *Rule) (Validator, error) {
+func (FloatValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
 	validator := &FloatValidator{}
 
 	switch rule.Name {
@@ -168,7 +175,7 @@ func (FloatValidator) New(rule *Rule) (Validator, error) {
 		if len(maxDigitsBytes) > 0 {
 			maxDigits, err := strconv.ParseUint(string(maxDigitsBytes), 10, 4)
 			if err != nil {
-				return nil, NewSyntaxErrorf("decimal digits should be a uint value which less than 16, but got `%s`", maxDigitsBytes)
+				return nil, errors.NewSyntaxError("decimal digits should be a uint value which less than 16, but got `%s`", maxDigitsBytes)
 			}
 			validator.MaxDigits = uint(maxDigits)
 		}
@@ -178,7 +185,7 @@ func (FloatValidator) New(rule *Rule) (Validator, error) {
 			if len(decimalDigitsBytes) > 0 {
 				decimalDigits, err := strconv.ParseUint(string(decimalDigitsBytes), 10, 4)
 				if err != nil || uint(decimalDigits) >= validator.MaxDigits {
-					return nil, NewSyntaxErrorf("decimal digits should be a uint value which less than %d, but got `%s`", validator.MaxDigits, decimalDigitsBytes)
+					return nil, errors.NewSyntaxError("decimal digits should be a uint value which less than %d, but got `%s`", validator.MaxDigits, decimalDigitsBytes)
 				}
 				validator.DecimalDigits = ptr.Uint(uint(decimalDigits))
 			}
@@ -216,7 +223,7 @@ func (FloatValidator) New(rule *Rule) (Validator, error) {
 				v := mayBeMultipleOf[1:]
 				multipleOf, err := parseFloat(v, validator.MaxDigits, validator.DecimalDigits)
 				if err != nil {
-					return nil, NewSyntaxErrorf("multipleOf should be a valid float<%d> value, but got `%s`", validator.MaxDigits, v)
+					return nil, errors.NewSyntaxError("multipleOf should be a valid float<%d> value, but got `%s`", validator.MaxDigits, v)
 				}
 				validator.MultipleOf = multipleOf
 			}
@@ -228,17 +235,30 @@ func (FloatValidator) New(rule *Rule) (Validator, error) {
 				b := v.Bytes()
 				enumValue, err := parseFloat(b, validator.MaxDigits, validator.DecimalDigits)
 				if err != nil {
-					return nil, NewSyntaxErrorf("enum should be a valid float<%d> value, but got `%s`", validator.MaxDigits, b)
+					return nil, errors.NewSyntaxError("enum should be a valid float<%d> value, but got `%s`", validator.MaxDigits, b)
 				}
 				validator.Enums[enumValue] = string(b)
 			}
 		}
 	}
 
-	return validator, nil
+	return validator, validator.TypeCheck(tpe)
 }
 
-func floatRange(tpe string, maxDigits uint, decimalDigits *uint, ranges ...*RuleLit) (*float64, *float64, error) {
+func (validator *FloatValidator) TypeCheck(tpe reflect.Type) error {
+	switch tpe.Kind() {
+	case reflect.Float32:
+		if validator.MaxDigits > 7 {
+			return fmt.Errorf("max digits too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Float64:
+		return nil
+	}
+	return errors.NewUnsupportedTypeError(tpe, validator.String())
+}
+
+func floatRange(tpe string, maxDigits uint, decimalDigits *uint, ranges ...*rules.RuleLit) (*float64, *float64, error) {
 	fullType := fmt.Sprintf("%s<%d>", tpe, maxDigits)
 	if decimalDigits != nil {
 		fullType = fmt.Sprintf("%s<%d,%d>", tpe, maxDigits, *decimalDigits)
@@ -317,26 +337,26 @@ func parseFloat(b []byte, maxDigits uint, maybeDecimalDigits *uint) (float64, er
 func (validator *FloatValidator) String() string {
 	validator.SetDefaults()
 
-	rule := NewRule(validator.Names()[0])
+	rule := rules.NewRule(validator.Names()[0])
 
 	decimalDigits := *validator.DecimalDigits
 
-	rule.Params = []RuleNode{
-		NewRuleLit([]byte(strconv.Itoa(int(validator.MaxDigits)))),
-		NewRuleLit([]byte(strconv.Itoa(int(decimalDigits)))),
+	rule.Params = []rules.RuleNode{
+		rules.NewRuleLit([]byte(strconv.Itoa(int(validator.MaxDigits)))),
+		rules.NewRuleLit([]byte(strconv.Itoa(int(decimalDigits)))),
 	}
 
 	if validator.Minimum != nil || validator.Maximum != nil {
-		rule.Range = make([]*RuleLit, 2)
+		rule.Range = make([]*rules.RuleLit, 2)
 
 		if validator.Minimum != nil {
-			rule.Range[0] = NewRuleLit(
+			rule.Range[0] = rules.NewRuleLit(
 				[]byte(fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", *validator.Minimum)),
 			)
 		}
 
 		if validator.Maximum != nil {
-			rule.Range[1] = NewRuleLit(
+			rule.Range[1] = rules.NewRuleLit(
 				[]byte(fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", *validator.Maximum)),
 			)
 		}
@@ -346,12 +366,12 @@ func (validator *FloatValidator) String() string {
 	}
 
 	if validator.MultipleOf != 0 {
-		rule.Values = []*RuleLit{
-			NewRuleLit([]byte("%" + fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", validator.MultipleOf))),
+		rule.Values = []*rules.RuleLit{
+			rules.NewRuleLit([]byte("%" + fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", validator.MultipleOf))),
 		}
 	} else if validator.Enums != nil {
 		for _, str := range validator.Enums {
-			rule.Values = append(rule.Values, NewRuleLit([]byte(str)))
+			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(str)))
 		}
 	}
 

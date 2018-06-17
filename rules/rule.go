@@ -1,9 +1,11 @@
-package validator
+package rules
 
 import (
 	"bytes"
 	"regexp"
 	"text/scanner"
+
+	"github.com/go-courier/validator/errors"
 )
 
 func MustParseRuleString(rule string) *Rule {
@@ -43,14 +45,14 @@ func (s *ruleScanner) rootRule() (*Rule, error) {
 		return nil, err
 	}
 	if tok := s.Scan(); tok != scanner.EOF {
-		return nil, NewSyntaxErrorf("%s | rule should be end but got `%s`", s.data[0:s.Pos().Offset], string(tok))
+		return nil, errors.NewSyntaxError("%s | rule should be end but got `%s`", s.data[0:s.Pos().Offset], string(tok))
 	}
 	return rule, nil
 }
 
 var keychars = func() map[rune]bool {
 	m := map[rune]bool{}
-	for _, r := range []rune("@[](){}/<>,:") {
+	for _, r := range []rune("@?=[](){}/<>,:") {
 		m[r] = true
 	}
 	return m
@@ -59,14 +61,14 @@ var keychars = func() map[rune]bool {
 func (s *ruleScanner) scanLit() (string, error) {
 	tok := s.Scan()
 	if keychars[tok] {
-		return "", NewSyntaxErrorf("%s | invalid literal token `%s`", s.data[0:s.Pos().Offset], string(tok))
+		return "", errors.NewSyntaxError("%s | invalid literal token `%s`", s.data[0:s.Pos().Offset], string(tok))
 	}
 	return s.TokenText(), nil
 }
 
 func (s *ruleScanner) rule() (*Rule, error) {
 	if firstToken := s.Next(); firstToken != '@' {
-		return nil, NewSyntaxErrorf("%s | rule should start with `@` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
+		return nil, errors.NewSyntaxError("%s | rule should start with `@` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
 	}
 	startAt := s.Pos().Offset - 1
 
@@ -75,13 +77,20 @@ func (s *ruleScanner) rule() (*Rule, error) {
 		return nil, err
 	}
 	if name == "" {
-		return nil, NewSyntaxErrorf("%s | rule missing name", s.data[0:s.Pos().Offset])
+		return nil, errors.NewSyntaxError("%s | rule missing name", s.data[0:s.Pos().Offset])
 	}
 	rule := NewRule(name)
 
 LOOP:
 	for tok := s.Peek(); ; tok = s.Peek() {
 		switch tok {
+		case '?', '=':
+			optional, defaultValue, err := s.optionalAndDefaultValue()
+			if err != nil {
+				return nil, err
+			}
+			rule.Optional = optional
+			rule.DefaultValue = defaultValue
 		case '<':
 			params, err := s.params()
 			if err != nil {
@@ -108,6 +117,8 @@ LOOP:
 				return nil, err
 			}
 			rule.Pattern = pattern
+		case ' ':
+			tok = s.Next()
 		default:
 			break LOOP
 		}
@@ -120,7 +131,7 @@ LOOP:
 
 func (s *ruleScanner) params() ([]RuleNode, error) {
 	if firstToken := s.Next(); firstToken != '<' {
-		return nil, NewSyntaxErrorf("%s | parameters of rule should start with `<` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
+		return nil, errors.NewSyntaxError("%s | parameters of rule should start with `<` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
 	}
 
 	params := map[int]RuleNode{}
@@ -128,7 +139,7 @@ func (s *ruleScanner) params() ([]RuleNode, error) {
 
 	for tok := s.Peek(); tok != '>'; tok = s.Peek() {
 		if tok == scanner.EOF {
-			return nil, NewSyntaxErrorf("%s | parameters of rule should end with `>` but got `%s`", s.data[0:s.Pos().Offset], string(tok))
+			return nil, errors.NewSyntaxError("%s | parameters of rule should end with `>` but got `%s`", s.data[0:s.Pos().Offset], string(tok))
 		}
 		switch tok {
 		case ' ':
@@ -152,7 +163,7 @@ func (s *ruleScanner) params() ([]RuleNode, error) {
 			} else if ruleLit, ok := ruleNode.(*RuleLit); ok {
 				ruleLit.Append([]byte(lit))
 			} else {
-				return nil, NewSyntaxErrorf("%s | rule should be end but got `%s`", s.data[0:s.Pos().Offset], string(tok))
+				return nil, errors.NewSyntaxError("%s | rule should be end but got `%s`", s.data[0:s.Pos().Offset], string(tok))
 			}
 		}
 	}
@@ -172,7 +183,7 @@ func (s *ruleScanner) params() ([]RuleNode, error) {
 
 func (s *ruleScanner) ranges() ([]*RuleLit, rune, error) {
 	if firstToken := s.Next(); !(firstToken == '[' || firstToken == '(') {
-		return nil, firstToken, NewSyntaxErrorf("%s range of rule should start with `[` or `(` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
+		return nil, firstToken, errors.NewSyntaxError("%s range of rule should start with `[` or `(` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
 	}
 
 	ruleLits := map[int]*RuleLit{}
@@ -180,7 +191,7 @@ func (s *ruleScanner) ranges() ([]*RuleLit, rune, error) {
 
 	for tok := s.Peek(); !(tok == ']' || tok == ')'); tok = s.Peek() {
 		if tok == scanner.EOF {
-			return nil, tok, NewSyntaxErrorf("%s range of rule should end with `]` `)` but got `%s`", s.data[0:s.Pos().Offset], string(tok))
+			return nil, tok, errors.NewSyntaxError("%s range of rule should end with `]` `)` but got `%s`", s.data[0:s.Pos().Offset], string(tok))
 		}
 		switch tok {
 		case ' ':
@@ -216,7 +227,7 @@ func (s *ruleScanner) ranges() ([]*RuleLit, rune, error) {
 
 func (s *ruleScanner) values() ([]*RuleLit, error) {
 	if firstToken := s.Next(); firstToken != '{' {
-		return nil, NewSyntaxErrorf("%s | values of rule should start with `{` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
+		return nil, errors.NewSyntaxError("%s | values of rule should start with `{` but got `%s`", s.data[0:s.Pos().Offset], string(firstToken))
 	}
 
 	ruleValues := map[int]*RuleLit{}
@@ -224,7 +235,7 @@ func (s *ruleScanner) values() ([]*RuleLit, error) {
 
 	for tok := s.Peek(); tok != '}'; tok = s.Peek() {
 		if tok == scanner.EOF {
-			return nil, NewSyntaxErrorf("%s values of rule should end with `}`", s.data[0:s.Pos().Offset])
+			return nil, errors.NewSyntaxError("%s values of rule should end with `}`", s.data[0:s.Pos().Offset])
 		}
 		switch tok {
 		case ' ':
@@ -244,6 +255,8 @@ func (s *ruleScanner) values() ([]*RuleLit, error) {
 			}
 		}
 	}
+	s.Next()
+
 	valueList := make([]*RuleLit, valueCount)
 	for i := range valueList {
 		if p, ok := ruleValues[i+1]; ok {
@@ -252,187 +265,85 @@ func (s *ruleScanner) values() ([]*RuleLit, error) {
 			valueList[i] = NewRuleLit([]byte(""))
 		}
 	}
-
-	s.Next()
 	return valueList, nil
 }
 
 func (s *ruleScanner) pattern() (*regexp.Regexp, error) {
 	firstTok := s.Next()
 	if firstTok != '/' {
-		return nil, NewSyntaxErrorf("%s | pattern of rule should start with `/`", s.data[0:s.Pos().Offset])
+		return nil, errors.NewSyntaxError("%s | pattern of rule should start with `/`", s.data[0:s.Pos().Offset])
 	}
 
 	b := &bytes.Buffer{}
 
 	for tok := s.Peek(); tok != '/'; tok = s.Peek() {
 		if tok == scanner.EOF {
-			return nil, NewSyntaxErrorf("%s | pattern of rule should end with `/`", s.data[0:s.Pos().Offset])
+			return nil, errors.NewSyntaxError("%s | pattern of rule should end with `/`", s.data[0:s.Pos().Offset])
 		}
-		switch tok {
-		case '\\':
+		if tok == '\\' {
 			tok = s.Next()
 			next := s.Next()
+			// \/ -> /
 			if next != '/' {
 				b.WriteRune(tok)
 			}
 			b.WriteRune(next)
-		default:
-			b.WriteRune(tok)
-			tok = s.Next()
+			continue
 		}
+		b.WriteRune(tok)
+		tok = s.Next()
 	}
 	s.Next()
 
 	return regexp.Compile(b.String())
 }
 
-type RuleNode interface {
-	node()
-	Bytes() []byte
-}
-
-func NewRule(name string) *Rule {
-	return &Rule{
-		Name: name,
-	}
-}
-
-// @name
-// @name<param1,param2,...>
-// @name[from, to)
-// @name<param1,param2,...>[from:to]
-// @name<param1,param2,...>[length]
-// @name<param1,param3,...>{Value1,Value2,Value3}
-// @name<param1,param2,...>/\w+/
-type Rule struct {
-	RAW []byte
-
-	Name   string
-	Params []RuleNode
-
-	Range          []*RuleLit
-	ExclusiveLeft  bool
-	ExclusiveRight bool
-
-	Values []*RuleLit
-
-	Pattern *regexp.Regexp
-
-	RuleNode
-}
-
-func (r *Rule) Bytes() []byte {
-	if r == nil {
-		return nil
+func (s *ruleScanner) optionalAndDefaultValue() (bool, []byte, error) {
+	firstTok := s.Next()
+	if !(firstTok == '=' || firstTok == '?') {
+		return false, nil, errors.NewSyntaxError("%s | optional or default value of rule should start with `?` or `=`", s.data[0:s.Pos().Offset])
 	}
 
-	buf := &bytes.Buffer{}
-	buf.WriteByte('@')
-	buf.WriteString(r.Name)
+	b := &bytes.Buffer{}
 
-	if len(r.Params) > 0 {
-		buf.WriteByte('<')
-		for i, p := range r.Params {
-			if i > 0 {
-				buf.WriteByte(',')
+	tok := s.Peek()
+	for tok == ' ' {
+		tok = s.Next()
+	}
+
+	if tok == '\'' {
+		for tok = s.Peek(); tok != '\''; tok = s.Peek() {
+			if tok == scanner.EOF {
+				return true, nil, errors.NewSyntaxError("%s | default value of of rule should end with `'`", s.data[0:s.Pos().Offset])
 			}
-			buf.Write(p.Bytes())
-		}
-		buf.WriteByte('>')
-	}
-
-	if len(r.Range) > 0 {
-		if r.ExclusiveLeft {
-			buf.WriteRune('(')
-		} else {
-			buf.WriteRune('[')
-		}
-		for i, p := range r.Range {
-			if i > 0 {
-				buf.WriteByte(',')
+			if tok == '\\' {
+				tok = s.Next()
+				next := s.Next()
+				// \' -> '
+				if next != '\'' {
+					b.WriteRune(tok)
+				}
+				b.WriteRune(next)
+				continue
 			}
-			buf.Write(p.Bytes())
+			b.WriteRune(tok)
+			tok = s.Next()
 		}
-		if r.ExclusiveRight {
-			buf.WriteRune(')')
-		} else {
-			buf.WriteRune(']')
+		s.Next()
+	} else if tok != scanner.EOF {
+		b.WriteRune(tok)
+		lit, err := s.scanLit()
+		if err != nil {
+			return false, nil, err
 		}
+		b.WriteString(lit)
 	}
 
-	if len(r.Values) > 0 {
-		buf.WriteByte('{')
-		for i, p := range r.Values {
-			if i > 0 {
-				buf.WriteByte(',')
-			}
-			buf.Write(p.Bytes())
-		}
-		buf.WriteByte('}')
+	defaultValue := b.Bytes()
+
+	if firstTok == '=' && defaultValue == nil {
+		return true, []byte{}, nil
 	}
 
-	if r.Pattern != nil {
-		buf.Write(Slash([]byte(r.Pattern.String())))
-	}
-
-	return buf.Bytes()
-}
-
-func NewRuleLit(lit []byte) *RuleLit {
-	return &RuleLit{
-		Lit: lit,
-	}
-}
-
-type RuleLit struct {
-	Lit []byte
-	RuleNode
-}
-
-func (lit *RuleLit) Append(b []byte) {
-	lit.Lit = append(lit.Lit, b...)
-}
-
-func (lit *RuleLit) Bytes() []byte {
-	if lit == nil {
-		return nil
-	}
-	return lit.Lit
-}
-
-func Unslash(src []byte) ([]byte, error) {
-	n := len(src)
-	if n < 2 {
-		return src, NewSyntaxErrorf("%s", src)
-	}
-	quote := src[0]
-	if quote != '/' || quote != src[n-1] {
-		return src, NewSyntaxErrorf("%s", src)
-	}
-
-	src = src[1 : n-1]
-	n = len(src)
-
-	finalData := make([]byte, 0)
-	for i, b := range src {
-		if b == '\\' && i != n-1 && src[i+1] == '/' {
-			continue
-		}
-		finalData = append(finalData, b)
-	}
-	return finalData, nil
-}
-
-func Slash(data []byte) []byte {
-	buf := &bytes.Buffer{}
-	buf.WriteRune('/')
-	for _, b := range data {
-		if b == '/' {
-			buf.WriteRune('\\')
-		}
-		buf.WriteByte(b)
-	}
-	buf.WriteRune('/')
-	return buf.Bytes()
+	return true, defaultValue, nil
 }

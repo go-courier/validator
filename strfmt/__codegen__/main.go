@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"go/ast"
 	"go/parser"
 	"go/token"
-	"go/ast"
-	"bytes"
-	"github.com/go-courier/codegen"
-	"strings"
 	"sort"
+	"strings"
+
+	"github.com/go-courier/codegen"
 )
 
 func main() {

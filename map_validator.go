@@ -1,8 +1,11 @@
 package validator
 
 import (
-	"reflect"
 	"fmt"
+	"reflect"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 /*
@@ -13,19 +16,13 @@ Rules:
 	@map<KEY_RULE, ELEM_RULE>[length]
 
 	@map<@string{A,B,C},@int[0]>[,100]
-
-Notice:
-
-Key rule and elem rule need to manually validate by other validator.
-This validator just validate min properties and max properties
 */
 type MapValidator struct {
 	MinProperties uint64
 	MaxProperties *uint64
 
-	Rule     *Rule
-	KeyRule  *Rule
-	ElemRule *Rule
+	KeyValidator  Validator
+	ElemValidator Validator
 }
 
 func (MapValidator) Names() []string {
@@ -33,28 +30,62 @@ func (MapValidator) Names() []string {
 }
 
 func (validator *MapValidator) Validate(v interface{}) error {
-	tpe := reflect.TypeOf(v)
-	if tpe.Kind() != reflect.Map {
-		return NewUnsupportedTypeError("map", reflect.TypeOf(v))
+	switch rv := v.(type) {
+	case reflect.Value:
+		if rv.Kind() != reflect.Map {
+			return errors.NewUnsupportedTypeError(rv.Type(), validator.String())
+		}
+		return validator.ValidateReflectValue(rv)
+	default:
+		tpe := reflect.TypeOf(v)
+		if tpe.Kind() != reflect.Map {
+			return errors.NewUnsupportedTypeError(tpe, validator.String())
+		}
+		return validator.ValidateReflectValue(reflect.ValueOf(v))
 	}
+}
+
+func (validator *MapValidator) ValidateReflectValue(rv reflect.Value) error {
 	lenOfValue := uint64(0)
-	rv := reflect.ValueOf(v)
 	if !rv.IsNil() {
 		lenOfValue = uint64(rv.Len())
 	}
 	if lenOfValue < validator.MinProperties || (validator.MaxProperties != nil && lenOfValue > *validator.MaxProperties) {
 		return fmt.Errorf("map length out of range %s，current：%d", validator, lenOfValue)
 	}
+
+	if validator.KeyValidator != nil || validator.ElemValidator != nil {
+		errors := errors.NewErrorSet("")
+		for _, key := range rv.MapKeys() {
+			vOfKey := key.Interface()
+			if validator.KeyValidator != nil {
+				err := validator.KeyValidator.Validate(vOfKey)
+				if err != nil {
+					errors.AddErr(err, fmt.Sprintf("%v/key", vOfKey))
+				}
+			}
+			if validator.ElemValidator != nil {
+				err := validator.ElemValidator.Validate(rv.MapIndex(key).Interface())
+				if err != nil {
+					errors.AddErr(err, fmt.Sprintf("%v", vOfKey))
+				}
+			}
+		}
+		return errors.Err()
+	}
+
 	return nil
 }
 
-func (MapValidator) New(rule *Rule) (Validator, error) {
-	validator := &MapValidator{
-		Rule: rule,
+func (validator *MapValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+	if tpe.Kind() != reflect.Map {
+		return nil, errors.NewUnsupportedTypeError(tpe, validator.String())
 	}
 
+	mapValidator := &MapValidator{}
+
 	if rule.ExclusiveLeft || rule.ExclusiveRight {
-		return nil, NewSyntaxErrorf("range mark of %s should not be `(` or `)`", validator.Names()[0])
+		return nil, errors.NewSyntaxError("range mark of %s should not be `(` or `)`", mapValidator.Names()[0])
 	}
 
 	if rule.Range != nil {
@@ -63,8 +94,8 @@ func (MapValidator) New(rule *Rule) (Validator, error) {
 			return nil, err
 		}
 
-		validator.MinProperties = min
-		validator.MaxProperties = max
+		mapValidator.MinProperties = min
+		mapValidator.MaxProperties = max
 	}
 
 	if rule.Params != nil {
@@ -74,14 +105,22 @@ func (MapValidator) New(rule *Rule) (Validator, error) {
 
 		for i, param := range rule.Params {
 			switch r := param.(type) {
-			case *Rule:
+			case *rules.Rule:
 				switch i {
 				case 0:
-					validator.KeyRule = r
+					v, err := mgr.Compile(r.RAW, tpe.Key(), nil)
+					if err != nil {
+						return nil, fmt.Errorf("map key %s", err)
+					}
+					mapValidator.KeyValidator = v
 				case 1:
-					validator.ElemRule = r
+					v, err := mgr.Compile(r.RAW, tpe.Elem(), nil)
+					if err != nil {
+						return nil, fmt.Errorf("map elem %s", err)
+					}
+					mapValidator.ElemValidator = v
 				}
-			case *RuleLit:
+			case *rules.RuleLit:
 				if len(r.Bytes()) > 0 {
 					return nil, fmt.Errorf("map parameter should be a valid rule")
 				}
@@ -89,23 +128,25 @@ func (MapValidator) New(rule *Rule) (Validator, error) {
 		}
 	}
 
-	return validator, nil
+	return mapValidator, nil
 }
 
 func (validator *MapValidator) String() string {
-	if validator.Rule == nil {
-		rule := NewRule(validator.Names()[0])
+	rule := rules.NewRule(validator.Names()[0])
 
-		if validator.KeyRule != nil || validator.ElemRule != nil {
-			rule.Params = []RuleNode{
-				validator.KeyRule,
-				validator.ElemRule,
-			}
+	if validator.KeyValidator != nil || validator.ElemValidator != nil {
+		rule.Params = make([]rules.RuleNode, 2)
+
+		if validator.KeyValidator != nil {
+			rule.Params[0] = rules.NewRuleLit([]byte(validator.KeyValidator.String()))
 		}
 
-		rule.Range = RangeFromUint(validator.MinProperties, validator.MaxProperties)
-
-		validator.Rule = rule
+		if validator.ElemValidator != nil {
+			rule.Params[1] = rules.NewRuleLit([]byte(validator.ElemValidator.String()))
+		}
 	}
-	return string(validator.Rule.Bytes())
+
+	rule.Range = RangeFromUint(validator.MinProperties, validator.MaxProperties)
+
+	return string(rule.Bytes())
 }

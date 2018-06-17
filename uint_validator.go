@@ -6,6 +6,9 @@ import (
 	"reflect"
 	"strconv"
 	"unicode"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 /*
@@ -77,6 +80,10 @@ func (validator *UintValidator) SetDefaults() {
 }
 
 func (validator *UintValidator) Validate(v interface{}) error {
+	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
+		v = rv.Interface()
+	}
+
 	val := uint64(0)
 	switch i := v.(type) {
 	case uint8:
@@ -90,7 +97,7 @@ func (validator *UintValidator) Validate(v interface{}) error {
 	case uint64:
 		val = i
 	default:
-		return NewUnsupportedTypeError("uint64", reflect.TypeOf(v))
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
 	}
 
 	if validator.Enums != nil {
@@ -114,7 +121,7 @@ func (validator *UintValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (UintValidator) New(rule *Rule) (Validator, error) {
+func (UintValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
 	validator := &UintValidator{}
 
 	bitSizeBuf := &bytes.Buffer{}
@@ -136,7 +143,7 @@ func (UintValidator) New(rule *Rule) (Validator, error) {
 		bitSizeStr := bitSizeBuf.String()
 		bitSizeNum, err := strconv.ParseUint(bitSizeStr, 10, 8)
 		if err != nil || bitSizeNum > 64 {
-			return nil, NewSyntaxErrorf("unit parameter should be valid bit size, but got `%s`", bitSizeStr)
+			return nil, errors.NewSyntaxError("unit parameter should be valid bit size, but got `%s`", bitSizeStr)
 		}
 		validator.BitSize = uint(bitSizeNum)
 	}
@@ -168,7 +175,7 @@ func (UintValidator) New(rule *Rule) (Validator, error) {
 				v := mayBeMultipleOf[1:]
 				multipleOf, err := strconv.ParseUint(string(v), 10, int(validator.BitSize))
 				if err != nil {
-					return nil, NewSyntaxErrorf("multipleOf should be a valid int%d value, but got `%s`", validator.BitSize, v)
+					return nil, errors.NewSyntaxError("multipleOf should be a valid int%d value, but got `%s`", validator.BitSize, v)
 				}
 				validator.MultipleOf = multipleOf
 			}
@@ -180,38 +187,61 @@ func (UintValidator) New(rule *Rule) (Validator, error) {
 				str := string(v.Bytes())
 				enumValue, err := strconv.ParseUint(str, 10, int(validator.BitSize))
 				if err != nil {
-					return nil, NewSyntaxErrorf("enum should be a valid int%d value, but got `%s`", validator.BitSize, v)
+					return nil, errors.NewSyntaxError("enum should be a valid int%d value, but got `%s`", validator.BitSize, v)
 				}
 				validator.Enums[enumValue] = str
 			}
 		}
 	}
 
-	return validator, nil
+	return validator, validator.TypeCheck(tpe)
+}
+
+func (validator *UintValidator) TypeCheck(tpe reflect.Type) error {
+	switch tpe.Kind() {
+	case reflect.Uint8:
+		if validator.BitSize > 8 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Uint16:
+		if validator.BitSize > 16 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Uint, reflect.Uint32:
+		if validator.BitSize > 32 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Uint64:
+		return nil
+	}
+	return errors.NewUnsupportedTypeError(tpe, validator.String())
 }
 
 func (validator *UintValidator) String() string {
-	rule := NewRule(validator.Names()[0])
+	rule := rules.NewRule(validator.Names()[0])
 
-	rule.Params = []RuleNode{
-		NewRuleLit([]byte(strconv.Itoa(int(validator.BitSize)))),
+	rule.Params = []rules.RuleNode{
+		rules.NewRuleLit([]byte(strconv.Itoa(int(validator.BitSize)))),
 	}
 
-	rule.Range = []*RuleLit{
-		NewRuleLit([]byte(fmt.Sprintf("%d", validator.Minimum))),
-		NewRuleLit([]byte(fmt.Sprintf("%d", validator.Maximum))),
+	rule.Range = []*rules.RuleLit{
+		rules.NewRuleLit([]byte(fmt.Sprintf("%d", validator.Minimum))),
+		rules.NewRuleLit([]byte(fmt.Sprintf("%d", validator.Maximum))),
 	}
 
 	rule.ExclusiveLeft = validator.ExclusiveMinimum
 	rule.ExclusiveRight = validator.ExclusiveMaximum
 
 	if validator.MultipleOf != 0 {
-		rule.Values = []*RuleLit{
-			NewRuleLit([]byte("%" + fmt.Sprintf("%d", validator.MultipleOf))),
+		rule.Values = []*rules.RuleLit{
+			rules.NewRuleLit([]byte("%" + fmt.Sprintf("%d", validator.MultipleOf))),
 		}
 	} else if validator.Enums != nil {
 		for _, str := range validator.Enums {
-			rule.Values = append(rule.Values, NewRuleLit([]byte(str)))
+			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(str)))
 		}
 	}
 

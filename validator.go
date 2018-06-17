@@ -2,77 +2,100 @@ package validator
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
+
+	"github.com/go-courier/validator/rules"
 )
 
-var BuiltInValidators = []Validator{
-	&MapValidator{},
-	&SliceValidator{},
+var BuiltInValidators = []ValidatorCreator{
 	&StringValidator{},
 	&UintValidator{},
 	&IntValidator{},
+	&FloatValidator{},
+
+	&StructValidator{},
+	&MapValidator{},
+	&SliceValidator{},
 }
 
-type Validator interface {
+type ValidatorMgr interface {
+	Compile(rule []byte, tpe reflect.Type, processor RuleProcessor) (Validator, error)
+}
+
+type RuleProcessor func(rule *rules.Rule)
+
+type ValidatorCreator interface {
 	// name and aliases of validator
 	// we will register validator to validator set by these names
 	Names() []string
+	// create new instance
+	New(rule *rules.Rule, tpe reflect.Type, validateMgr ValidatorMgr) (Validator, error)
+}
+
+type Validator interface {
 	// validate value
 	Validate(v interface{}) error
-	// create new instance
-	New(rule *Rule) (Validator, error)
 	// stringify validator rule
 	String() string
 }
 
-func NewValidatorSet(validators ...Validator) ValidatorSet {
-	validatorSet := ValidatorSet{}
+func NewValidatorFactory(validators ...ValidatorCreator) *ValidatorFactory {
+	validatorSet := map[string]ValidatorCreator{}
 	for _, validator := range validators {
 		for _, name := range validator.Names() {
 			validatorSet[name] = validator
 		}
 	}
-	return validatorSet
-}
 
-type ValidatorSet map[string]Validator
-
-func (validatorSet ValidatorSet) Get(name string) (Validator, bool) {
-	validator, ok := validatorSet[name]
-	return validator, ok
-}
-
-func (validatorSet *ValidatorSet) Compile(rule []byte) (Validator, error) {
-	r, err := ParseRule(rule)
-	if err != nil {
-		return nil, err
-	}
-	validator, ok := validatorSet.Get(r.Name)
-	if !ok {
-		return nil, fmt.Errorf("%s not match any validator", r.Name)
-	}
-	return validator.New(r)
-}
-
-func NewValidatorFactory(validators ...Validator) *ValidatorFactory {
 	return &ValidatorFactory{
-		validators: NewValidatorSet(validators...),
+		validatorSet: validatorSet,
 	}
 }
 
 type ValidatorFactory struct {
-	validators ValidatorSet
-	cache      sync.Map
+	validatorSet map[string]ValidatorCreator
+	cache        sync.Map
 }
 
-func (f *ValidatorFactory) Compile(rule string) (Validator, error) {
-	if v, ok := f.cache.Load(rule); ok {
-		return v.(Validator), nil
+func (f *ValidatorFactory) MustCompile(rule []byte, tpe reflect.Type, ruleProcessor RuleProcessor) Validator {
+	v, err := f.Compile(rule, tpe, ruleProcessor)
+	if err != nil {
+		panic(err)
 	}
-	validator, err := f.validators.Compile([]byte(rule))
+	return v
+}
+
+func (f *ValidatorFactory) Compile(rule []byte, tpe reflect.Type, ruleProcessor RuleProcessor) (Validator, error) {
+	if len(rule) == 0 {
+		return nil, nil
+	}
+
+	r, err := rules.ParseRule(rule)
 	if err != nil {
 		return nil, err
 	}
-	f.cache.Store(rule, validator)
+	if ruleProcessor != nil {
+		ruleProcessor(r)
+	}
+
+	key := tpe.String() + string(r.Bytes())
+	if v, ok := f.cache.Load(key); ok {
+		return v.(Validator), nil
+	}
+
+	validatorCreator, ok := f.validatorSet[r.Name]
+	if !ok {
+		return nil, fmt.Errorf("%s not match any validator", r.Name)
+	}
+
+	normalizeValidator := NewValidatorLoader(validatorCreator)
+
+	validator, err := normalizeValidator.New(r, tpe, f)
+	if err != nil {
+		return nil, err
+	}
+
+	f.cache.Store(key, validator)
 	return validator, nil
 }

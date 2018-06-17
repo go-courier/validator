@@ -1,13 +1,15 @@
 package validator
 
 import (
-	"testing"
 	"fmt"
+	"reflect"
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 )
 
 func ExampleNewRegexpStrfmtValidator() {
-	AlphaValidator := NewRegexpStrfmtValidator("^[a-zA-Z]+$", "alpha", )
+	AlphaValidator := NewRegexpStrfmtValidator("^[a-zA-Z]+$", "alpha")
 
 	fmt.Println(AlphaValidator.Validate("a"))
 	fmt.Println(AlphaValidator.Validate("1"))
@@ -34,7 +36,7 @@ func TestStrfmtValidator_Validate(t *testing.T) {
 	for _, c := range cases {
 		for _, v := range c.values {
 			t.Run(fmt.Sprintf("%s validate %s", c.validator, v), func(t *testing.T) {
-				validator, _ := NewValidatorFactory(c.validator).Compile("@alpha")
+				validator, _ := NewValidatorFactory(c.validator).Compile([]byte("@alpha"), reflect.TypeOf(""), nil)
 				err := validator.Validate(v)
 				assert.NoError(t, err)
 			})

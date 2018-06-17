@@ -1,4 +1,4 @@
-package validator
+package rules
 
 import (
 	"testing"
@@ -33,14 +33,28 @@ func TestParseRule(t *testing.T) {
 		{`@string{, B,    C}`, `@string{,B,C}`},
 		{`@uint{%2}`, `@uint{%2}`},
 
+		// with not required mark or default value
+		{`@string?`, `@string?`},
+		{`@string ?`, `@string?`},
+		{`@string = `, `@string = ''`},
+		{`@string = '\''`, `@string = '\''`},
+		{`@string = 'default value'`, `@string = 'default value'`},
+		{`@string = 'defa\'ult\ value'`, `@string = 'defa\'ult\ value'`},
+		{`@string = 13123`, `@string = '13123'`},
+		{`@string = 1.1`, `@string = '1.1'`},
+
 		// with regexp
 		{`@string/\w+/`, `@string/\w+/`},
 		{`@string/\w+     $/`, `@string/\w+     $/`},
 		{`@string/\w+\/abc/`, `@string/\w+\/abc/`},
+		{`@string/\w+\/\/abc/`, `@string/\w+\/\/abc/`},
+		{`@string/^\w+\/test/`, `@string/^\w+\/test/`},
 
 		// composes
+		{`@string = 's'/\w+/`, `@string/\w+/ = 's'`},
 		{`@map<,@string[1,]>`, `@map<,@string[1,]>`},
 		{`@map<@string,>[1,2]`, `@map<@string,>[1,2]`},
+		{`@map<@string = 's',>[1,2]`, `@map<@string = 's',>[1,2]`},
 	}
 
 	for i := range cases {
@@ -66,52 +80,11 @@ func TestParseRuleFailed(t *testing.T) {
 		`@name<@sub[>`,
 		`@name</>`,
 		`@/`,
+		`@name?=`,
 	}
 
 	for _, c := range cases {
 		_, err := ParseRuleString(c)
 		t.Logf("%s %s", c, err)
 	}
-}
-
-func TestSlashUnslash(t *testing.T) {
-	cases := [][]string{
-		{`/\w+\/test/`, `\w+/test`},
-		{`/a/`, `a`},
-		{`/abc/`, `abc`},
-		{`/☺/`, `☺`},
-		{`/\xFF/`, `\xFF`},
-		{`/\377/`, `\377`},
-		{`/\u1234/`, `\u1234`},
-		{`/\U00010111/`, `\U00010111`},
-		{`/\U0001011111/`, `\U0001011111`},
-		{`/\a\b\f\n\r\t\v\\\"/`, `\a\b\f\n\r\t\v\\\"`},
-		{`/\//`, `/`},
-	}
-
-	for i := range cases {
-		c := cases[i]
-		t.Run("unslash:"+c[0], func(t *testing.T) {
-			r, err := Unslash([]byte(c[0]))
-			assert.NoError(t, err)
-			assert.Equal(t, string(r), c[1])
-		})
-		t.Run("slash:"+c[1], func(t *testing.T) {
-			assert.Equal(t, string(Slash([]byte(c[1]))), c[0])
-		})
-	}
-
-	casesForFailed := [][]string{
-		{`/`, ``},
-		{`/adfadf`, ``},
-	}
-
-	for i := range casesForFailed {
-		c := casesForFailed[i]
-		t.Run("unslash:"+c[0], func(t *testing.T) {
-			_, err := Unslash([]byte(c[0]))
-			assert.Error(t, err)
-		})
-	}
-
 }

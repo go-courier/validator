@@ -6,12 +6,15 @@ import (
 	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 type StrLenMode int
 
 const (
-	STR_LEN_MODE__LENGTH     StrLenMode = iota
+	STR_LEN_MODE__LENGTH StrLenMode = iota
 	STR_LEN_MODE__RUNE_COUNT
 )
 
@@ -96,9 +99,13 @@ func (StringValidator) Names() []string {
 }
 
 func (validator *StringValidator) Validate(v interface{}) error {
+	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
+		v = rv.Interface()
+	}
+
 	s, ok := v.(string)
 	if !ok {
-		return NewUnsupportedTypeError("string", reflect.TypeOf(v))
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
 	}
 
 	if validator.Enums != nil {
@@ -123,11 +130,11 @@ func (validator *StringValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (StringValidator) New(rule *Rule) (Validator, error) {
+func (StringValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
 	validator := &StringValidator{}
 
 	if rule.ExclusiveLeft || rule.ExclusiveRight {
-		return nil, NewSyntaxErrorf("range mark of %s should not be `(` or `)`", validator.Names()[0])
+		return nil, errors.NewSyntaxError("range mark of %s should not be `(` or `)`", validator.Names()[0])
 	}
 
 	if rule.Params != nil {
@@ -145,7 +152,7 @@ func (StringValidator) New(rule *Rule) (Validator, error) {
 
 	if rule.Pattern != nil {
 		validator.Pattern = rule.Pattern
-		return validator, nil
+		return validator, validator.TypeCheck(tpe)
 	}
 
 	if rule.Values != nil {
@@ -165,20 +172,27 @@ func (StringValidator) New(rule *Rule) (Validator, error) {
 		validator.MaxLength = max
 	}
 
-	return validator, nil
+	return validator, validator.TypeCheck(tpe)
+}
+
+func (validator *StringValidator) TypeCheck(tpe reflect.Type) error {
+	if tpe.Kind() == reflect.String {
+		return nil
+	}
+	return errors.NewUnsupportedTypeError(tpe, validator.String())
 }
 
 func (validator *StringValidator) String() string {
-	rule := NewRule(validator.Names()[0])
+	rule := rules.NewRule(validator.Names()[0])
 
 	if validator.Enums != nil {
 		for e := range validator.Enums {
-			rule.Values = append(rule.Values, NewRuleLit([]byte(e)))
+			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(e)))
 		}
 	}
 
-	rule.Params = []RuleNode{
-		NewRuleLit([]byte(validator.LenMode.String())),
+	rule.Params = []rules.RuleNode{
+		rules.NewRuleLit([]byte(validator.LenMode.String())),
 	}
 
 	if validator.Pattern != nil {

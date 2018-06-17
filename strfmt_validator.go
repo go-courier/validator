@@ -1,9 +1,12 @@
 package validator
 
 import (
+	"fmt"
 	"reflect"
 	"regexp"
-	"fmt"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 func NewRegexpStrfmtValidator(regexpStr string, name string, aliases ...string) *StrfmtValidator {
@@ -17,7 +20,7 @@ func NewRegexpStrfmtValidator(regexpStr string, name string, aliases ...string) 
 	return NewStrfmtValidator(validate, name, aliases...)
 }
 
-func NewStrfmtValidator(validate func(v interface{}) error, name string, aliases ... string) *StrfmtValidator {
+func NewStrfmtValidator(validate func(v interface{}) error, name string, aliases ...string) *StrfmtValidator {
 	return &StrfmtValidator{
 		names:    append([]string{name}, aliases...),
 		validate: validate,
@@ -37,14 +40,24 @@ func (validator *StrfmtValidator) Names() []string {
 	return validator.names
 }
 
-func (validator StrfmtValidator) New(rule *Rule) (Validator, error) {
-	return &validator, nil
+func (validator StrfmtValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+	return &validator, validator.TypeCheck(tpe)
+}
+
+func (validator *StrfmtValidator) TypeCheck(tpe reflect.Type) error {
+	if tpe.Kind() == reflect.String {
+		return nil
+	}
+	return errors.NewUnsupportedTypeError(tpe, validator.String())
 }
 
 func (validator *StrfmtValidator) Validate(v interface{}) error {
+	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
+		v = rv.Interface()
+	}
 	s, ok := v.(string)
 	if !ok {
-		return NewUnsupportedTypeError("string", reflect.TypeOf(v))
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
 	}
 	return validator.validate(s)
 }

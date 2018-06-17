@@ -8,6 +8,9 @@ import (
 	"unicode"
 
 	"github.com/go-courier/ptr"
+
+	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 /*
@@ -82,6 +85,10 @@ func (validator *IntValidator) SetDefaults() {
 }
 
 func (validator *IntValidator) Validate(v interface{}) error {
+	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
+		v = rv.Interface()
+	}
+
 	val := int64(0)
 	switch i := v.(type) {
 	case int8:
@@ -95,7 +102,7 @@ func (validator *IntValidator) Validate(v interface{}) error {
 	case int64:
 		val = i
 	default:
-		return NewUnsupportedTypeError("int64", reflect.TypeOf(v))
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
 	}
 
 	validator.SetDefaults()
@@ -124,7 +131,7 @@ func (validator *IntValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (IntValidator) New(rule *Rule) (Validator, error) {
+func (IntValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
 	validator := &IntValidator{}
 
 	bitSizeBuf := &bytes.Buffer{}
@@ -146,7 +153,7 @@ func (IntValidator) New(rule *Rule) (Validator, error) {
 		bitSizeStr := bitSizeBuf.String()
 		bitSizeNum, err := strconv.ParseUint(bitSizeStr, 10, 8)
 		if err != nil || bitSizeNum > 64 {
-			return nil, NewSyntaxErrorf("int parameter should be valid bit size, but got `%s`", bitSizeStr)
+			return nil, errors.NewSyntaxError("int parameter should be valid bit size, but got `%s`", bitSizeStr)
 		}
 		validator.BitSize = uint(bitSizeNum)
 	}
@@ -162,7 +169,6 @@ func (IntValidator) New(rule *Rule) (Validator, error) {
 		}
 		validator.Minimum = min
 		validator.Maximum = max
-
 		validator.ExclusiveMinimum = rule.ExclusiveLeft
 		validator.ExclusiveMaximum = rule.ExclusiveRight
 	}
@@ -176,7 +182,7 @@ func (IntValidator) New(rule *Rule) (Validator, error) {
 				v := mayBeMultipleOf[1:]
 				multipleOf, err := strconv.ParseInt(string(v), 10, int(validator.BitSize))
 				if err != nil {
-					return nil, NewSyntaxErrorf("multipleOf should be a valid int%d value, but got `%s`", validator.BitSize, v)
+					return nil, errors.NewSyntaxError("multipleOf should be a valid int%d value, but got `%s`", validator.BitSize, v)
 				}
 				validator.MultipleOf = multipleOf
 			}
@@ -188,17 +194,40 @@ func (IntValidator) New(rule *Rule) (Validator, error) {
 				str := string(v.Bytes())
 				enumValue, err := strconv.ParseInt(str, 10, int(validator.BitSize))
 				if err != nil {
-					return nil, NewSyntaxErrorf("enum should be a valid int%d value, but got `%s`", validator.BitSize, v)
+					return nil, errors.NewSyntaxError("enum should be a valid int%d value, but got `%s`", validator.BitSize, v)
 				}
 				validator.Enums[enumValue] = str
 			}
 		}
 	}
 
-	return validator, nil
+	return validator, validator.TypeCheck(tpe)
 }
 
-func intRange(tpe string, bitSize uint, ranges ...*RuleLit) (*int64, *int64, error) {
+func (validator *IntValidator) TypeCheck(tpe reflect.Type) error {
+	switch tpe.Kind() {
+	case reflect.Int8:
+		if validator.BitSize > 8 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Int16:
+		if validator.BitSize > 16 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Int, reflect.Int32:
+		if validator.BitSize > 32 {
+			return fmt.Errorf("bit size too large for type %s", tpe)
+		}
+		return nil
+	case reflect.Int64:
+		return nil
+	}
+	return errors.NewUnsupportedTypeError(tpe, validator.String())
+}
+
+func intRange(tpe string, bitSize uint, ranges ...*rules.RuleLit) (*int64, *int64, error) {
 	parseInt := func(b []byte) (*int64, error) {
 		if len(b) == 0 {
 			return nil, nil
@@ -209,7 +238,6 @@ func intRange(tpe string, bitSize uint, ranges ...*RuleLit) (*int64, *int64, err
 		}
 		return &n, nil
 	}
-
 	switch len(ranges) {
 	case 2:
 		min, err := parseInt(ranges[0].Bytes())
@@ -221,7 +249,7 @@ func intRange(tpe string, bitSize uint, ranges ...*RuleLit) (*int64, *int64, err
 			return nil, nil, fmt.Errorf("max %s", err)
 		}
 		if min != nil && max != nil && *max < *min {
-			return nil, nil, fmt.Errorf("max %s value must be equal or large than min value %d, current %d", tpe, min, max)
+			return nil, nil, fmt.Errorf("max %s value must be equal or large than min expect %d, current %d", tpe, min, max)
 		}
 
 		return min, max, nil
@@ -232,32 +260,45 @@ func intRange(tpe string, bitSize uint, ranges ...*RuleLit) (*int64, *int64, err
 		}
 		return min, min, nil
 	}
-
 	return nil, nil, nil
 }
 
 func (validator *IntValidator) String() string {
-	rule := NewRule(validator.Names()[0])
+	rule := rules.NewRule(validator.Names()[0])
 
-	rule.Params = []RuleNode{
-		NewRuleLit([]byte(strconv.Itoa(int(validator.BitSize)))),
+	rule.Params = []rules.RuleNode{
+		rules.NewRuleLit([]byte(strconv.Itoa(int(validator.BitSize)))),
 	}
 
-	rule.Range = []*RuleLit{
-		NewRuleLit([]byte(fmt.Sprintf("%d", *validator.Minimum))),
-		NewRuleLit([]byte(fmt.Sprintf("%d", *validator.Maximum))),
+	if validator.Minimum != nil || validator.Maximum != nil {
+		rule.Range = make([]*rules.RuleLit, 2)
+
+		if validator.Minimum != nil {
+			rule.Range[0] = rules.NewRuleLit(
+				[]byte(fmt.Sprintf("%d", *validator.Minimum)),
+			)
+		}
+
+		if validator.Maximum != nil {
+			rule.Range[1] = rules.NewRuleLit(
+				[]byte(fmt.Sprintf("%d", *validator.Maximum)),
+			)
+		}
+
+		rule.ExclusiveLeft = validator.ExclusiveMinimum
+		rule.ExclusiveRight = validator.ExclusiveMaximum
 	}
 
 	rule.ExclusiveLeft = validator.ExclusiveMinimum
 	rule.ExclusiveRight = validator.ExclusiveMaximum
 
 	if validator.MultipleOf != 0 {
-		rule.Values = []*RuleLit{
-			NewRuleLit([]byte("%" + fmt.Sprintf("%d", validator.MultipleOf))),
+		rule.Values = []*rules.RuleLit{
+			rules.NewRuleLit([]byte("%" + fmt.Sprintf("%d", validator.MultipleOf))),
 		}
 	} else if validator.Enums != nil {
 		for _, str := range validator.Enums {
-			rule.Values = append(rule.Values, NewRuleLit([]byte(str)))
+			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(str)))
 		}
 	}
 
