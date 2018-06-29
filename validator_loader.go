@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/go-courier/validator/reflectx"
 	"github.com/go-courier/validator/rules"
 )
 
@@ -48,8 +49,8 @@ func (validator *ValidatorLoader) New(rule *rules.Rule, tpe reflect.Type, valida
 	loader.Validator = v
 
 	if loader.DefaultValue != nil {
-		rv := newValue(loader.Type)
-		if err := UnmarshalDefaultValue(rv, loader.DefaultValue); err != nil {
+		rv := reflectx.New(loader.Type)
+		if err := reflectx.SetValueByString(rv, loader.DefaultValue); err != nil {
 			return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", loader.DefaultValue, loader.Type, err)
 		}
 		if err := loader.Validate(rv); err != nil {
@@ -67,7 +68,7 @@ func (ValidatorLoader) normalize(tpe reflect.Type) (reflect.Type, PreprocessStag
 		return reflect.TypeOf(""), PreprocessString
 	}
 	if tpe.Kind() == reflect.Ptr {
-		return indirectType(tpe), PreprocessPtr
+		return reflectx.IndirectType(tpe), PreprocessPtr
 	}
 	return tpe, PreprocessSkip
 }
@@ -92,14 +93,14 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 			rv = reflect.ValueOf(&v).Elem()
 		}
 
-		isEmptyValue := IsEmptyValue(rv)
+		isEmptyValue := reflectx.IsEmptyValue(rv)
 		if isEmptyValue {
 			if !validator.Optional {
 				return fmt.Errorf("missing required field")
 			}
 
 			if validator.DefaultValue != nil {
-				err := UnmarshalDefaultValue(rv, validator.DefaultValue)
+				err := reflectx.SetValueByString(rv, validator.DefaultValue)
 				if err != nil {
 					return fmt.Errorf("unmarshal default value failed")
 				}
@@ -110,7 +111,7 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 		if rv.Kind() == reflect.Interface {
 			rv = rv.Elem()
 		}
-		rv = indirect(rv)
+		rv = reflectx.Indirect(rv)
 		return validator.Validator.Validate(rv)
 	}
 }

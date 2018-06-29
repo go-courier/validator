@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/reflectx"
 	"github.com/go-courier/validator/rules"
 )
 
@@ -59,12 +60,12 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 			continue
 		}
 
-		fieldType := indirectType(field.Type)
+		fieldType := reflectx.IndirectType(field.Type)
 		isStructType := fieldType.Kind() == reflect.Struct
 
 		if field.Anonymous && isStructType && !exists {
 			if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
-				fieldValue = newValue(fieldType)
+				fieldValue = reflectx.New(fieldType)
 			}
 			validator.validate(fieldValue, errSet)
 			continue
@@ -72,7 +73,7 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 
 		if fieldValidator, ok := validator.fieldValidators[field.Name]; ok {
 			if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
-				fieldValue = newValue(field.Type)
+				fieldValue = reflectx.New(field.Type)
 			}
 
 			err := fieldValidator.Validate(fieldValue)
@@ -106,7 +107,7 @@ func (validator *StructValidator) scan(structTpe reflect.Type, errSet *errors.Er
 			continue
 		}
 
-		fieldType := indirectType(field.Type)
+		fieldType := reflectx.IndirectType(field.Type)
 		isStructType := fieldType.Kind() == reflect.Struct
 
 		if field.Anonymous && isStructType && !exists {

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/assert"
@@ -98,6 +99,21 @@ func TestNewValidatorLoader(t *testing.T) {
 			}
 		})
 	}
+}
+
+type Duration time.Duration
+
+func (d Duration) MarshalText() ([]byte, error) {
+	return []byte(time.Duration(d).String()), nil
+}
+
+func (d *Duration) UnmarshalText(data []byte) error {
+	dur, err := time.ParseDuration(string(data))
+	if err != nil {
+		return err
+	}
+	*d = Duration(dur)
+	return nil
 }
 
 func TestNewValidatorLoaderFailed(t *testing.T) {
