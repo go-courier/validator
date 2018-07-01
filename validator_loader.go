@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/go-courier/validator/reflectx"
+	"github.com/go-courier/reflectx"
+
 	"github.com/go-courier/validator/rules"
 )
 
@@ -50,7 +51,7 @@ func (validator *ValidatorLoader) New(rule *rules.Rule, tpe reflect.Type, valida
 
 	if loader.DefaultValue != nil {
 		rv := reflectx.New(loader.Type)
-		if err := reflectx.SetValueByString(rv, loader.DefaultValue); err != nil {
+		if err := reflectx.UnmarshalText(rv, loader.DefaultValue); err != nil {
 			return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", loader.DefaultValue, loader.Type, err)
 		}
 		if err := loader.Validate(rv); err != nil {
@@ -90,7 +91,7 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 	default:
 		rv, ok := v.(reflect.Value)
 		if !ok {
-			rv = reflect.ValueOf(&v).Elem()
+			rv = reflect.ValueOf(v)
 		}
 
 		isEmptyValue := reflectx.IsEmptyValue(rv)
@@ -100,7 +101,7 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 			}
 
 			if validator.DefaultValue != nil {
-				err := reflectx.SetValueByString(rv, validator.DefaultValue)
+				err := reflectx.UnmarshalText(rv, validator.DefaultValue)
 				if err != nil {
 					return fmt.Errorf("unmarshal default value failed")
 				}

@@ -1,6 +1,7 @@
 package benchmarks
 
 import (
+	"encoding"
 	"reflect"
 	"testing"
 )
@@ -140,6 +141,41 @@ func BenchmarkMethodPerformance(b *testing.B) {
 
 		for i := 0; i < b.N; i++ {
 			val.PtrRecv()
+		}
+	})
+}
+
+var (
+	textMarshalerType = reflect.TypeOf(new(encoding.TextMarshaler)).Elem()
+)
+
+func BenchmarkImplementsOrTypeAssign(b *testing.B) {
+	val := 1
+	rv := reflect.ValueOf(&val)
+
+	b.Run("implements", func(b *testing.B) {
+		tpe := rv.Type()
+
+		for i := 0; i < b.N; i++ {
+			if ok := tpe.Implements(textMarshalerType); ok {
+
+			}
+		}
+	})
+
+	b.Run("interface and type assert", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if _, ok := rv.Interface().(encoding.TextMarshaler); ok {
+
+			}
+		}
+	})
+
+	b.Run("type assert", func(b *testing.B) {
+		for i := 0; i < b.N; i++ {
+			if _, ok := (interface{})(val).(encoding.TextMarshaler); ok {
+
+			}
 		}
 	})
 }

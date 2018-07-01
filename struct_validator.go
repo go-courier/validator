@@ -5,8 +5,9 @@ import (
 	"reflect"
 	"strings"
 
+	"github.com/go-courier/reflectx"
+
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/reflectx"
 	"github.com/go-courier/validator/rules"
 )
 

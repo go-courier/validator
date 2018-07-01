@@ -14,7 +14,8 @@ var validatorFactory = NewValidatorFactory(BuiltInValidators...)
 
 func TestNewValidatorLoader(t *testing.T) {
 	type SomeStruct struct {
-		Value *string
+		PtrString *string
+		String    string
 	}
 
 	var val *string
@@ -28,7 +29,10 @@ func TestNewValidatorLoader(t *testing.T) {
 		validator    *ValidatorLoader
 	}{
 		{
-			[]interface{}{"", "1"},
+			[]interface{}{
+				reflect.ValueOf(someStruct).Elem().FieldByName("String"),
+				"1",
+			},
 			[]interface{}{"222"},
 			"@string[1,2] = '1'",
 			reflect.TypeOf(""),
