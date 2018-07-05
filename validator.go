@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/reflectx"
 )
 
 var BuiltInValidators = []ValidatorCreator{
@@ -79,7 +80,7 @@ func (f *ValidatorFactory) Compile(rule []byte, tpe reflect.Type, ruleProcessor 
 		ruleProcessor(r)
 	}
 
-	key := tpe.String() + string(r.Bytes())
+	key := reflectx.FullTypeName(tpe) + string(r.Bytes())
 	if v, ok := f.cache.Load(key); ok {
 		return v.(Validator), nil
 	}
