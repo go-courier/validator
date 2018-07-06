@@ -9,20 +9,11 @@ import (
 	"github.com/go-courier/reflectx"
 )
 
-var BuiltInValidators = []ValidatorCreator{
-	&StringValidator{},
-	&UintValidator{},
-	&IntValidator{},
-	&FloatValidator{},
-
-	&StructValidator{},
-	&MapValidator{},
-	&SliceValidator{},
-}
-
 type ValidatorMgr interface {
 	Compile(rule []byte, tpe reflect.Type, processor RuleProcessor) (Validator, error)
 }
+
+var ValidatorMgrDefault = NewValidatorFactory()
 
 type RuleProcessor func(rule *rules.Rule)
 
@@ -41,22 +32,28 @@ type Validator interface {
 	String() string
 }
 
-func NewValidatorFactory(validators ...ValidatorCreator) *ValidatorFactory {
-	validatorSet := map[string]ValidatorCreator{}
-	for _, validator := range validators {
-		for _, name := range validator.Names() {
-			validatorSet[name] = validator
-		}
-	}
-
+func NewValidatorFactory() *ValidatorFactory {
 	return &ValidatorFactory{
-		validatorSet: validatorSet,
+		validatorSet: map[string]ValidatorCreator{},
 	}
 }
 
 type ValidatorFactory struct {
 	validatorSet map[string]ValidatorCreator
 	cache        sync.Map
+}
+
+func (f *ValidatorFactory) ResetCache() {
+	f.cache = sync.Map{}
+}
+
+func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
+	for i := range validators {
+		validator := validators[i]
+		for _, name := range validator.Names() {
+			f.validatorSet[name] = validator
+		}
+	}
 }
 
 func (f *ValidatorFactory) MustCompile(rule []byte, tpe reflect.Type, ruleProcessor RuleProcessor) Validator {

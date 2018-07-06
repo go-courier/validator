@@ -36,7 +36,10 @@ func TestStrfmtValidator_Validate(t *testing.T) {
 	for _, c := range cases {
 		for _, v := range c.values {
 			t.Run(fmt.Sprintf("%s validate %s", c.validator, v), func(t *testing.T) {
-				validator, _ := NewValidatorFactory(c.validator).Compile([]byte("@alpha"), reflect.TypeOf(""), nil)
+				f := NewValidatorFactory()
+				f.Register(c.validator)
+
+				validator, _ := f.Compile([]byte("@alpha"), reflect.TypeOf(""), nil)
 				err := validator.Validate(v)
 				assert.NoError(t, err)
 			})

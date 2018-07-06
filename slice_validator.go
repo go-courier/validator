@@ -27,6 +27,10 @@ type SliceValidator struct {
 	MaxItems *uint64
 }
 
+func init()  {
+	ValidatorMgrDefault.Register(&SliceValidator{})
+}
+
 func (SliceValidator) Names() []string {
 	return []string{"slice", "array"}
 }

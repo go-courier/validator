@@ -25,12 +25,12 @@ func TestMapValidator_New(t *testing.T) {
 		reflect.TypeOf(map[string]map[string]string{}): {
 			{"@map<,@map[1,2]>[1,]", &MapValidator{
 				MinProperties: 1,
-				ElemValidator: validatorFactory.MustCompile([]byte("@map[1,2]"), reflect.TypeOf(map[string]string{}), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@map[1,2]"), reflect.TypeOf(map[string]string{}), nil),
 			}},
 			{"@map<@string[0,],@map[1,2]>[1,]", &MapValidator{
 				MinProperties: 1,
-				KeyValidator:  validatorFactory.MustCompile([]byte("@string[0,]"), reflect.TypeOf(""), nil),
-				ElemValidator: validatorFactory.MustCompile([]byte("@map[1,2]"), reflect.TypeOf(map[string]string{}), nil),
+				KeyValidator:  ValidatorMgrDefault.MustCompile([]byte("@string[0,]"), reflect.TypeOf(""), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@map[1,2]"), reflect.TypeOf(map[string]string{}), nil),
 			}},
 		},
 	}
@@ -38,7 +38,7 @@ func TestMapValidator_New(t *testing.T) {
 	for tpe, cases := range caseSet {
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, validatorFactory)
+				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, ValidatorMgrDefault)
 				assert.NoError(t, err)
 				assert.Equal(t, c.expect, v)
 			})
@@ -73,7 +73,7 @@ func TestMapValidator_NewFailed(t *testing.T) {
 			rule := rules.MustParseRuleString(r)
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, validatorFactory)
+				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
 				assert.Error(t, err)
 				t.Log(err)
 			})
@@ -101,8 +101,8 @@ func TestMapValidator_Validate(t *testing.T) {
 		}, &MapValidator{
 			MinProperties: 2,
 			MaxProperties: ptr.Uint64(4),
-			KeyValidator:  validatorFactory.MustCompile([]byte("@string[1,]"), reflect.TypeOf("1"), nil),
-			ElemValidator: validatorFactory.MustCompile([]byte("@string[1,]?"), reflect.TypeOf("1"), nil),
+			KeyValidator:  ValidatorMgrDefault.MustCompile([]byte("@string[1,]"), reflect.TypeOf("1"), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[1,]?"), reflect.TypeOf("1"), nil),
 		}, "key value validate"},
 	}
 
@@ -144,8 +144,8 @@ func TestMapValidator_ValidateFailed(t *testing.T) {
 		}, &MapValidator{
 			MinProperties: 2,
 			MaxProperties: ptr.Uint64(4),
-			KeyValidator:  validatorFactory.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
-			ElemValidator: validatorFactory.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
+			KeyValidator:  ValidatorMgrDefault.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
 		}, "key elem validate failed"},
 	}
 

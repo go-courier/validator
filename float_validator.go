@@ -60,6 +60,10 @@ type FloatValidator struct {
 	Enums map[float64]string
 }
 
+func init()  {
+	ValidatorMgrDefault.Register(&FloatValidator{})
+}
+
 func (validator *FloatValidator) SetDefaults() {
 	if validator != nil {
 		if validator.MaxDigits == 0 {

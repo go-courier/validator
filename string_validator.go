@@ -94,6 +94,10 @@ type StringValidator struct {
 	MaxLength *uint64
 }
 
+func init()  {
+	ValidatorMgrDefault.Register(&StringValidator{})
+}
+
 func (StringValidator) Names() []string {
 	return []string{"string", "char"}
 }

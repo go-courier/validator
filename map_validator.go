@@ -25,6 +25,10 @@ type MapValidator struct {
 	ElemValidator Validator
 }
 
+func init()  {
+	ValidatorMgrDefault.Register(&MapValidator{})
+}
+
 func (MapValidator) Names() []string {
 	return []string{"map"}
 }

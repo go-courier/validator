@@ -23,7 +23,7 @@ func TestSliceValidator_New(t *testing.T) {
 			}},
 			{"@slice<@string[1,2]>[1,]", &SliceValidator{
 				MinItems:      1,
-				ElemValidator: validatorFactory.MustCompile([]byte("@string[1,2]"), reflect.TypeOf(""), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[1,2]"), reflect.TypeOf(""), nil),
 			}},
 			{"@slice[1]", &SliceValidator{
 				MinItems: 1,
@@ -35,7 +35,7 @@ func TestSliceValidator_New(t *testing.T) {
 	for tpe, cases := range caseSet {
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, validatorFactory)
+				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, ValidatorMgrDefault)
 				assert.NoError(t, err)
 				assert.Equal(t, c.expect, v)
 			})
@@ -71,7 +71,7 @@ func TestSliceValidator_NewFailed(t *testing.T) {
 			rule := rules.MustParseRuleString(r)
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, validatorFactory)
+				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
 				assert.Error(t, err)
 				t.Log(err)
 			})
@@ -100,7 +100,7 @@ func TestSliceValidator_Validate(t *testing.T) {
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: validatorFactory.MustCompile([]byte("@string[0,]"), reflect.TypeOf(""), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[0,]"), reflect.TypeOf(""), nil),
 		}, "elem validate"},
 	}
 
@@ -142,7 +142,7 @@ func TestSliceValidator_ValidateFailed(t *testing.T) {
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: validatorFactory.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
 		}, "elem validate failed"},
 	}
 

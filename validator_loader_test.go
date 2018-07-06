@@ -10,8 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var validatorFactory = NewValidatorFactory(BuiltInValidators...)
-
 func TestNewValidatorLoader(t *testing.T) {
 	type SomeStruct struct {
 		PtrString *string
@@ -79,7 +77,7 @@ func TestNewValidatorLoader(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s %s", c.tpe, c.rule), func(t *testing.T) {
-			validator, err := validatorFactory.Compile([]byte(c.rule), c.tpe, nil)
+			validator, err := ValidatorMgrDefault.Compile([]byte(c.rule), c.tpe, nil)
 			assert.NoError(t, err)
 			if err != nil {
 				return
@@ -137,7 +135,7 @@ func TestNewValidatorLoaderFailed(t *testing.T) {
 
 	for tpe := range invalidRules {
 		for _, r := range invalidRules[tpe] {
-			_, err := validatorFactory.Compile([]byte(r), tpe, nil)
+			_, err := ValidatorMgrDefault.Compile([]byte(r), tpe, nil)
 			assert.Error(t, err)
 			t.Log(err)
 		}

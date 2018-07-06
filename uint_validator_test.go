@@ -115,7 +115,7 @@ func TestUintValidator_ParseFailed(t *testing.T) {
 			rule := rules.MustParseRuleString(r)
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, validatorFactory)
+				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
 				assert.Error(t, err)
 				t.Log(err)
 			})

@@ -24,6 +24,10 @@ type StructValidator struct {
 	fieldValidators map[string]Validator
 }
 
+func init() {
+	ValidatorMgrDefault.Register(&StructValidator{})
+}
+
 func (StructValidator) Names() []string {
 	return []string{"struct"}
 }

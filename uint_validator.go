@@ -64,6 +64,10 @@ type UintValidator struct {
 	Enums map[uint64]string
 }
 
+func init() {
+	ValidatorMgrDefault.Register(&UintValidator{})
+}
+
 func (UintValidator) Names() []string {
 	return []string{"uint", "uint8", "uint16", "uint32", "uint64"}
 }

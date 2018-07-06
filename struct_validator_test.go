@@ -44,14 +44,14 @@ func TestStructValidator_New(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	validatorFactory := NewValidatorFactory(BuiltInValidators...)
+	ValidatorMgrDefault.ResetCache()
 
-	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), validatorFactory)
+	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
 	assert.NoError(t, err)
 
 	validateStrings := make([]string, 0)
 
-	validatorFactory.cache.Range(func(key, value interface{}) bool {
+	ValidatorMgrDefault.cache.Range(func(key, value interface{}) bool {
 		validateStrings = append(validateStrings, key.(string))
 		return true
 	})
@@ -83,21 +83,21 @@ func TestStructValidator_NewFailed(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	validatorFactory := NewValidatorFactory(BuiltInValidators...)
-
-	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), validatorFactory)
+	ValidatorMgrDefault.ResetCache()
+	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
 	assert.Error(t, err)
 	t.Log(err)
 
 	validateStrings := make([]string, 0)
-	validatorFactory.cache.Range(func(key, value interface{}) bool {
+
+	ValidatorMgrDefault.cache.Range(func(key, value interface{}) bool {
 		validateStrings = append(validateStrings, key.(string))
 		return true
 	})
 	assert.Len(t, validateStrings, 0)
 
 	{
-		_, err := validator.New(nil, reflect.TypeOf(""), validatorFactory)
+		_, err := validator.New(nil, reflect.TypeOf(""), ValidatorMgrDefault)
 		assert.Error(t, err)
 	}
 }
@@ -132,9 +132,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	validatorFactory := NewValidatorFactory(BuiltInValidators...)
-
-	structValidator, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), validatorFactory)
+	structValidator, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
 	assert.NoError(t, err)
 
 	errForValidate := structValidator.Validate(SomeStruct{

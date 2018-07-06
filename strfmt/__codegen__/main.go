@@ -41,6 +41,18 @@ func main() {
 		}
 
 		file.WriteBlock(
+			codegen.Expr(`func init() { ? }`,
+				codegen.Sel(
+					codegen.Id(file.Use("github.com/go-courier/validator", "ValidatorMgrDefault")),
+					codegen.Call(
+						"Register",
+						codegen.Id(codegen.UpperCamelCase(string(name))+"Validator"),
+					),
+				),
+			),
+		)
+
+		file.WriteBlock(
 			codegen.Expr("var ? = ?",
 				codegen.Id(codegen.UpperCamelCase(string(name))+"Validator"),
 				codegen.Call(
