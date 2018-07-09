@@ -19,10 +19,12 @@ type ErrorSet struct {
 }
 
 func (errorSet *ErrorSet) AddErr(err error, keyPathNodes ...interface{}) {
+	if err == nil {
+		return
+	}
 	errorSet.errors.PushBack(&FieldError{
 		Field: KeyPath(keyPathNodes),
-		Msg:   err.Error(),
-		err:   err,
+		Error: err,
 	})
 }
 
@@ -39,12 +41,12 @@ func (errorSet *ErrorSet) Flatten() *ErrorSet {
 	set := NewErrorSet(errorSet.root)
 
 	errorSet.Each(func(fieldErr *FieldError) {
-		if subSet, ok := fieldErr.err.(*ErrorSet); ok {
+		if subSet, ok := fieldErr.Error.(*ErrorSet); ok {
 			subSet.Flatten().Each(func(subSetFieldErr *FieldError) {
-				set.AddErr(subSetFieldErr.err, append(fieldErr.Field, subSetFieldErr.Field...)...)
+				set.AddErr(subSetFieldErr.Error, append(fieldErr.Field, subSetFieldErr.Field...)...)
 			})
 		} else {
-			set.AddErr(fieldErr.err, fieldErr.Field...)
+			set.AddErr(fieldErr.Error, fieldErr.Field...)
 		}
 	})
 
@@ -67,7 +69,7 @@ func (errorSet *ErrorSet) Error() string {
 
 	buf := bytes.Buffer{}
 	set.Each(func(fieldErr *FieldError) {
-		buf.WriteString(fmt.Sprintf("%s %s", fieldErr.Field, fieldErr.err))
+		buf.WriteString(fmt.Sprintf("%s %s", fieldErr.Field, fieldErr.Error))
 		buf.WriteRune('\n')
 	})
 
@@ -75,26 +77,11 @@ func (errorSet *ErrorSet) Error() string {
 }
 
 type FieldError struct {
-	Field KeyPath `json:"field"`
-	Msg   string  `json:"msg"`
-	err   error
-}
-
-type KeyPathNode interface {
-	NodeString() string
-}
-
-type KeyPathIndexer int
-
-func (i KeyPathIndexer) NodeString() string {
-	return fmt.Sprintf("[%d]", i)
+	Field KeyPath
+	Error error `json:"msg"`
 }
 
 type KeyPath []interface{}
-
-func (keyPath KeyPath) MarshalText() ([]byte, error) {
-	return []byte(keyPath.String()), nil
-}
 
 func (keyPath KeyPath) String() string {
 	buf := &bytes.Buffer{}

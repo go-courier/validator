@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-courier/reflectx"
 
+	"github.com/go-courier/validator/errors"
 	"github.com/go-courier/validator/rules"
 )
 
@@ -97,7 +98,7 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 		isEmptyValue := reflectx.IsEmptyValue(rv)
 		if isEmptyValue {
 			if !validator.Optional {
-				return fmt.Errorf("missing required field")
+				return errors.MissingRequiredFieldError{}
 			}
 
 			if validator.DefaultValue != nil {

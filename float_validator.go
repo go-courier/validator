@@ -13,6 +13,12 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetFloatValue                = "float value"
+	TargetDecimalDigitsOfFloatValue = "decimal digits of float value"
+	TargetTotalDigitsOfFloatValue   = "total digits of float value"
+)
+
 /*
 Validator for float32 and float64
 
@@ -60,7 +66,7 @@ type FloatValidator struct {
 	Enums map[float64]string
 }
 
-func init()  {
+func init() {
 	ValidatorMgrDefault.Register(&FloatValidator{})
 }
 
@@ -100,16 +106,33 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 
 	m, d := lengthOfDigits([]byte(fmt.Sprintf("%v", val)))
 	if m > validator.MaxDigits {
-		return fmt.Errorf("too many total digits of value %v, max %d", val, validator.MaxDigits)
+		return &errors.OutOfRangeError{
+			Target:  TargetTotalDigitsOfFloatValue,
+			Current: val,
+			Maximum: validator.MaxDigits,
+		}
 	}
 
 	if d > decimalDigits {
-		return fmt.Errorf("too many decimal digits of value %v, max %d", val, decimalDigits)
+		return &errors.OutOfRangeError{
+			Target:  TargetDecimalDigitsOfFloatValue,
+			Current: val,
+			Maximum: decimalDigits,
+		}
 	}
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[val]; !ok {
-			return fmt.Errorf("unknown enumeration value %v", val)
+			values := make([]interface{}, 0)
+			for _, v := range validator.Enums {
+				values = append(values, v)
+			}
+
+			return &errors.NotInEnumError{
+				Target:  TargetFloatValue,
+				Current: v,
+				Enums:   values,
+			}
 		}
 		return nil
 	}
@@ -117,20 +140,34 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 	if validator.Minimum != nil {
 		mininum := *validator.Minimum
 		if (validator.ExclusiveMinimum && val == mininum) || val < mininum {
-			return fmt.Errorf("float out of range %s，current：%v", validator, val)
+			return &errors.OutOfRangeError{
+				Target:           TargetFloatValue,
+				Current:          val,
+				Minimum:          mininum,
+				ExclusiveMinimum: validator.ExclusiveMinimum,
+			}
 		}
 	}
 
 	if validator.Maximum != nil {
 		maxinum := *validator.Maximum
 		if (validator.ExclusiveMaximum && val == maxinum) || val > maxinum {
-			return fmt.Errorf("float out of range %s，current：%v", validator, val)
+			return &errors.OutOfRangeError{
+				Target:           TargetFloatValue,
+				Current:          val,
+				Maximum:          maxinum,
+				ExclusiveMaximum: validator.ExclusiveMaximum,
+			}
 		}
 	}
 
 	if validator.MultipleOf != 0 {
 		if !multipleOf(val, validator.MultipleOf, decimalDigits) {
-			return fmt.Errorf("float value should be multiple of %v，current：%v", validator.MultipleOf, val)
+			return &errors.MultipleOfError{
+				Target:     TargetFloatValue,
+				Current:    val,
+				MultipleOf: validator.MultipleOf,
+			}
 		}
 	}
 

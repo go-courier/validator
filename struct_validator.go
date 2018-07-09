@@ -126,7 +126,9 @@ func (validator *StructValidator) scan(structTpe reflect.Type, errSet *errors.Er
 		}
 
 		fieldValidator, err := mgr.Compile([]byte(tagValidateValue), field.Type, func(rule *rules.Rule) {
-			rule.Optional = omitempty
+			if omitempty {
+				rule.Optional = omitempty
+			}
 
 			if defaultValue, ok := field.Tag.Lookup(TagDefault); ok {
 				rule.DefaultValue = []byte(defaultValue)

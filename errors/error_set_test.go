@@ -1,21 +1,24 @@
 package errors
 
 import (
-	"encoding/json"
-	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"fmt"
 )
 
-func TestFieldError(t *testing.T) {
-	data, _ := json.Marshal(FieldError{
-		Field: KeyPath{
-			"key",
-			1,
-			"string",
-		},
-		Msg: "error",
-	})
+func ExampleErrorSet() {
+	subErrSet := NewErrorSet("")
+	subErrSet.AddErr(fmt.Errorf("err"), "PropA")
+	subErrSet.AddErr(fmt.Errorf("err"), "PropB")
 
-	assert.Equal(t, `{"field":"key[1].string","msg":"error"}`, string(data))
+	errSet := NewErrorSet("")
+	errSet.AddErr(fmt.Errorf("err"), "Key")
+	errSet.AddErr(subErrSet.Err(), "Key", 1)
+	errSet.AddErr(NewErrorSet("").Err(), "Key", 1)
+
+	fmt.Println(errSet.Len())
+	fmt.Println(errSet)
+	// Output:
+	// 3
+	// Key err
+	// Key[1].PropA err
+	// Key[1].PropB err
 }

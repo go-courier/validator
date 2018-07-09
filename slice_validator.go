@@ -8,6 +8,10 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetSliceLength = "slice length"
+)
+
 /*
 Validator for slice
 
@@ -27,7 +31,7 @@ type SliceValidator struct {
 	MaxItems *uint64
 }
 
-func init()  {
+func init() {
 	ValidatorMgrDefault.Register(&SliceValidator{})
 }
 
@@ -56,9 +60,21 @@ func (validator *SliceValidator) ValidateReflectValue(rv reflect.Value) error {
 	if !rv.IsNil() {
 		lenOfValue = uint64(rv.Len())
 	}
-	if lenOfValue < validator.MinItems || (validator.MaxItems != nil && lenOfValue > *validator.MaxItems) {
-		return fmt.Errorf("slice length out of range %s，current：%d", validator, lenOfValue)
+	if lenOfValue < validator.MinItems {
+		return &errors.OutOfRangeError{
+			Target:  TargetSliceLength,
+			Current: rv.Interface(),
+			Minimum: validator.MinItems,
+		}
 	}
+	if validator.MaxItems != nil && lenOfValue > *validator.MaxItems {
+		return &errors.OutOfRangeError{
+			Target:  TargetSliceLength,
+			Current: rv.Interface(),
+			Maximum: validator.MaxItems,
+		}
+	}
+
 	if validator.ElemValidator != nil {
 		errors := errors.NewErrorSet("")
 		for i := 0; i < rv.Len(); i++ {

@@ -20,14 +20,17 @@ type UnsupportedTypeError struct {
 }
 
 func (e *UnsupportedTypeError) Error() string {
-	buf := &bytes.Buffer{}
+	buf := bytes.NewBuffer(nil)
 	buf.WriteString(e.rule)
 	buf.WriteString(" could not validate type ")
 	buf.WriteString(e.tpe.String())
-	buf.WriteString(" ")
 
-	for _, msg := range e.msgs {
-		buf.WriteString("; ")
+	for i, msg := range e.msgs {
+		if i == 0 {
+			buf.WriteString(": ")
+		} else {
+			buf.WriteString("; ")
+		}
 		buf.WriteString(msg)
 	}
 

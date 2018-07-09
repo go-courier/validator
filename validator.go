@@ -5,8 +5,9 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/go-courier/validator/rules"
 	"github.com/go-courier/reflectx"
+
+	"github.com/go-courier/validator/rules"
 )
 
 type ValidatorMgr interface {

@@ -15,7 +15,7 @@ func ExampleNewRegexpStrfmtValidator() {
 	fmt.Println(AlphaValidator.Validate("1"))
 	// Output:
 	// <nil>
-	// invalid alpha
+	// alpha ^[a-zA-Z]+$ not match 1
 }
 
 func TestStrfmtValidator_Validate(t *testing.T) {

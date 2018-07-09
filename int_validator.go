@@ -13,6 +13,10 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetIntValue = "int value"
+)
+
 /*
 Validator for int
 
@@ -66,7 +70,7 @@ type IntValidator struct {
 	Enums map[int64]string
 }
 
-func init()  {
+func init() {
 	ValidatorMgrDefault.Register(&IntValidator{})
 }
 
@@ -113,7 +117,16 @@ func (validator *IntValidator) Validate(v interface{}) error {
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[val]; !ok {
-			return fmt.Errorf("unknown enumeration value %d", val)
+			values := make([]interface{}, 0)
+			for _, v := range validator.Enums {
+				values = append(values, v)
+			}
+
+			return &errors.NotInEnumError{
+				Target:  TargetIntValue,
+				Current: val,
+				Enums:   values,
+			}
 		}
 		return nil
 	}
@@ -123,12 +136,23 @@ func (validator *IntValidator) Validate(v interface{}) error {
 
 	if ((validator.ExclusiveMinimum && val == mininum) || val < mininum) ||
 		((validator.ExclusiveMaximum && val == maxinum) || val > maxinum) {
-		return fmt.Errorf("int out of range %s，current：%d", validator, val)
+		return &errors.OutOfRangeError{
+			Target:           TargetFloatValue,
+			Current:          val,
+			Minimum:          mininum,
+			ExclusiveMinimum: validator.ExclusiveMinimum,
+			Maximum:          maxinum,
+			ExclusiveMaximum: validator.ExclusiveMaximum,
+		}
 	}
 
 	if validator.MultipleOf != 0 {
 		if val%validator.MultipleOf != 0 {
-			return fmt.Errorf("int value should be multiple of %d，current：%d", validator.MultipleOf, val)
+			return &errors.MultipleOfError{
+				Target:     TargetFloatValue,
+				Current:    val,
+				MultipleOf: validator.MultipleOf,
+			}
 		}
 	}
 

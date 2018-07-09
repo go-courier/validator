@@ -1,7 +1,6 @@
 package validator
 
 import (
-	"fmt"
 	"reflect"
 	"regexp"
 
@@ -13,7 +12,11 @@ func NewRegexpStrfmtValidator(regexpStr string, name string, aliases ...string) 
 	re := regexp.MustCompile(regexpStr)
 	validate := func(v interface{}) error {
 		if !re.MatchString(v.(string)) {
-			return fmt.Errorf("invalid %s", name)
+			return &errors.NotMatchError{
+				Target:  name,
+				Current: v,
+				Pattern: re,
+			}
 		}
 		return nil
 	}

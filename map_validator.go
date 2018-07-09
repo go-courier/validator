@@ -8,6 +8,10 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetMapLength = "map length"
+)
+
 /*
 Validator for map
 
@@ -25,7 +29,7 @@ type MapValidator struct {
 	ElemValidator Validator
 }
 
-func init()  {
+func init() {
 	ValidatorMgrDefault.Register(&MapValidator{})
 }
 
@@ -54,8 +58,21 @@ func (validator *MapValidator) ValidateReflectValue(rv reflect.Value) error {
 	if !rv.IsNil() {
 		lenOfValue = uint64(rv.Len())
 	}
-	if lenOfValue < validator.MinProperties || (validator.MaxProperties != nil && lenOfValue > *validator.MaxProperties) {
-		return fmt.Errorf("map length out of range %s，current：%d", validator, lenOfValue)
+
+	if lenOfValue < validator.MinProperties {
+		return &errors.OutOfRangeError{
+			Target:  TargetMapLength,
+			Current: rv.Interface(),
+			Minimum: validator.MinProperties,
+		}
+	}
+
+	if validator.MaxProperties != nil && lenOfValue > *validator.MaxProperties {
+		return &errors.OutOfRangeError{
+			Target:  TargetMapLength,
+			Current: rv.Interface(),
+			Maximum: validator.MaxProperties,
+		}
 	}
 
 	if validator.KeyValidator != nil || validator.ElemValidator != nil {

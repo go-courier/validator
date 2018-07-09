@@ -11,6 +11,10 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetUintValue = "uint value"
+)
+
 /*
 Validator for uint
 
@@ -106,19 +110,39 @@ func (validator *UintValidator) Validate(v interface{}) error {
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[val]; !ok {
-			return fmt.Errorf("unknown enumeration value %d", val)
+			values := make([]interface{}, 0)
+			for _, v := range validator.Enums {
+				values = append(values, v)
+			}
+
+			return &errors.NotInEnumError{
+				Target:  TargetUintValue,
+				Current: val,
+				Enums:   values,
+			}
 		}
 		return nil
 	}
 
 	if ((validator.ExclusiveMinimum && val == validator.Minimum) || val < validator.Minimum) ||
 		((validator.ExclusiveMaximum && val == validator.Maximum) || val > validator.Maximum) {
-		return fmt.Errorf("uint out of range %s，current：%d", validator, val)
+		return &errors.OutOfRangeError{
+			Target:           TargetUintValue,
+			Current:          val,
+			Minimum:          validator.Minimum,
+			ExclusiveMinimum: validator.ExclusiveMinimum,
+			Maximum:          validator.Maximum,
+			ExclusiveMaximum: validator.ExclusiveMaximum,
+		}
 	}
 
 	if validator.MultipleOf != 0 {
 		if val%validator.MultipleOf != 0 {
-			return fmt.Errorf("uint value should be multiple of %d，current：%d", validator.MultipleOf, val)
+			return &errors.MultipleOfError{
+				Target:     TargetUintValue,
+				Current:    val,
+				MultipleOf: validator.MultipleOf,
+			}
 		}
 	}
 

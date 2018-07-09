@@ -11,6 +11,10 @@ import (
 	"github.com/go-courier/validator/rules"
 )
 
+var (
+	TargetStringLength = "string length"
+)
+
 type StrLenMode int
 
 const (
@@ -94,7 +98,7 @@ type StringValidator struct {
 	MaxLength *uint64
 }
 
-func init()  {
+func init() {
 	ValidatorMgrDefault.Register(&StringValidator{})
 }
 
@@ -114,22 +118,47 @@ func (validator *StringValidator) Validate(v interface{}) error {
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[s]; !ok {
-			return fmt.Errorf("unknown enumeration value %s", s)
+			values := make([]interface{}, 0)
+			for _, v := range validator.Enums {
+				values = append(values, v)
+			}
+
+			return &errors.NotInEnumError{
+				Target:  TargetStringLength,
+				Current: v,
+				Enums:   values,
+			}
 		}
 		return nil
 	}
 
 	if validator.Pattern != nil {
 		if !validator.Pattern.MatchString(s) {
-			return fmt.Errorf("string not match `%s`，current：%s", validator.Pattern, s)
+			return &errors.NotMatchError{
+				Target:  TargetStringLength,
+				Pattern: validator.Pattern,
+				Current: v,
+			}
 		}
 		return nil
 	}
 
 	strLen := strLenModes[validator.LenMode](s)
 
-	if strLen < validator.MinLength || (validator.MaxLength != nil && strLen > *validator.MaxLength) {
-		return fmt.Errorf("string length out of range %s，current：%d", validator, strLen)
+	if strLen < validator.MinLength {
+		return &errors.OutOfRangeError{
+			Target:  TargetStringLength,
+			Current: v,
+			Minimum: validator.MinLength,
+		}
+	}
+
+	if validator.MaxLength != nil && strLen > *validator.MaxLength {
+		return &errors.OutOfRangeError{
+			Target:  TargetStringLength,
+			Current: v,
+			Maximum: validator.MaxLength,
+		}
 	}
 	return nil
 }
