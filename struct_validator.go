@@ -80,7 +80,6 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 			if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
 				fieldValue = reflectx.New(field.Type)
 			}
-
 			err := fieldValidator.Validate(fieldValue)
 			errSet.AddErr(err, fieldName)
 		}
@@ -121,7 +120,10 @@ func (validator *StructValidator) scan(structTpe reflect.Type, errSet *errors.Er
 		}
 
 		tagValidateValue, ok := field.Tag.Lookup(TagValidate)
-		if !ok && isStructType {
+		if !ok {
+			if !isStructType {
+				continue
+			}
 			tagValidateValue = "@struct"
 		}
 
@@ -134,10 +136,12 @@ func (validator *StructValidator) scan(structTpe reflect.Type, errSet *errors.Er
 				rule.DefaultValue = []byte(defaultValue)
 			}
 		})
+
 		if err != nil {
 			errSet.AddErr(err, field.Name)
 			continue
 		}
+
 		validator.fieldValidators[field.Name] = fieldValidator
 	}
 }
