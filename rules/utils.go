@@ -6,8 +6,6 @@ import (
 	"github.com/go-courier/validator/errors"
 )
 
-type Metas map[string]string
-
 func Unslash(src []byte) ([]byte, error) {
 	n := len(src)
 	if n < 2 {

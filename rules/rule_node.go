@@ -12,8 +12,7 @@ type RuleNode interface {
 
 func NewRule(name string) *Rule {
 	return &Rule{
-		Name:  name,
-		Metas: Metas{},
+		Name: name,
 	}
 }
 
@@ -33,8 +32,6 @@ type Rule struct {
 
 	Optional     bool
 	DefaultValue []byte
-
-	Metas Metas
 
 	RuleNode
 }
