@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/go-courier/ptr"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestNewValidatorLoader(t *testing.T) {
@@ -78,26 +78,26 @@ func TestNewValidatorLoader(t *testing.T) {
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s %s", c.tpe, c.rule), func(t *testing.T) {
 			validator, err := ValidatorMgrDefault.Compile([]byte(c.rule), c.tpe, nil)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 			if err != nil {
 				return
 			}
 
 			loader := validator.(*ValidatorLoader)
 
-			assert.Equal(t, c.validator.Optional, loader.Optional)
-			assert.Equal(t, c.validator.PreprocessStage, loader.PreprocessStage)
+			require.Equal(t, c.validator.Optional, loader.Optional)
+			require.Equal(t, c.validator.PreprocessStage, loader.PreprocessStage)
 
-			assert.Equal(t, c.validator.DefaultValue, loader.DefaultValue)
+			require.Equal(t, c.validator.DefaultValue, loader.DefaultValue)
 
 			for _, v := range c.valuesPass {
 				err := loader.Validate(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			}
 
 			for _, v := range c.valuesFailed {
 				err := loader.Validate(v)
-				assert.Error(t, err)
+				require.Error(t, err)
 			}
 		})
 	}
@@ -136,7 +136,7 @@ func TestNewValidatorLoaderFailed(t *testing.T) {
 	for tpe := range invalidRules {
 		for _, r := range invalidRules[tpe] {
 			_, err := ValidatorMgrDefault.Compile([]byte(r), tpe, nil)
-			assert.Error(t, err)
+			require.Error(t, err)
 			t.Log(err)
 		}
 	}

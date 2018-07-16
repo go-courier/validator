@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestSlashUnslash(t *testing.T) {
@@ -25,11 +25,11 @@ func TestSlashUnslash(t *testing.T) {
 		c := cases[i]
 		t.Run("unslash:"+c[0], func(t *testing.T) {
 			r, err := Unslash([]byte(c[0]))
-			assert.NoError(t, err)
-			assert.Equal(t, string(r), c[1])
+			require.NoError(t, err)
+			require.Equal(t, string(r), c[1])
 		})
 		t.Run("slash:"+c[1], func(t *testing.T) {
-			assert.Equal(t, string(Slash([]byte(c[1]))), c[0])
+			require.Equal(t, string(Slash([]byte(c[1]))), c[0])
 		})
 	}
 
@@ -42,7 +42,7 @@ func TestSlashUnslash(t *testing.T) {
 		c := casesForFailed[i]
 		t.Run("unslash:"+c[0], func(t *testing.T) {
 			_, err := Unslash([]byte(c[0]))
-			assert.Error(t, err)
+			require.Error(t, err)
 		})
 	}
 

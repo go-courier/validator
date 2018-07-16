@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/go-courier/ptr"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-courier/validator/rules"
 )
@@ -39,8 +39,8 @@ func TestMapValidator_New(t *testing.T) {
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
 				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, ValidatorMgrDefault)
-				assert.NoError(t, err)
-				assert.Equal(t, c.expect, v)
+				require.NoError(t, err)
+				require.Equal(t, c.expect, v)
 			})
 		}
 	}
@@ -74,7 +74,7 @@ func TestMapValidator_NewFailed(t *testing.T) {
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
 				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
-				assert.Error(t, err)
+				require.Error(t, err)
 				t.Log(err)
 			})
 		}
@@ -109,7 +109,7 @@ func TestMapValidator_Validate(t *testing.T) {
 	for _, c := range cases {
 		for _, v := range c.values {
 			t.Run(fmt.Sprintf("%s: %s validate %v", c.desc, c.validator, v), func(t *testing.T) {
-				assert.NoError(t, c.validator.Validate(v))
+				require.NoError(t, c.validator.Validate(v))
 			})
 		}
 	}
@@ -153,7 +153,7 @@ func TestMapValidator_ValidateFailed(t *testing.T) {
 		for _, v := range c.values {
 			t.Run(fmt.Sprintf("%s: %s validate %v", c.desc, c.validator, v), func(t *testing.T) {
 				err := c.validator.Validate(v)
-				assert.Error(t, err)
+				require.Error(t, err)
 				t.Log(err)
 			})
 		}

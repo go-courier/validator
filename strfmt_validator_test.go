@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func ExampleNewRegexpStrfmtValidator() {
@@ -41,7 +41,7 @@ func TestStrfmtValidator_Validate(t *testing.T) {
 
 				validator, _ := f.Compile([]byte("@alpha"), reflect.TypeOf(""), nil)
 				err := validator.Validate(v)
-				assert.NoError(t, err)
+				require.NoError(t, err)
 			})
 		}
 	}
@@ -67,7 +67,7 @@ func TestStrfmtValidator_ValidateFailed(t *testing.T) {
 		for _, v := range c.values {
 			t.Run(fmt.Sprintf("%s validate failed %s", c.validator, v), func(t *testing.T) {
 				err := c.validator.Validate(v)
-				assert.Error(t, err)
+				require.Error(t, err)
 			})
 		}
 	}

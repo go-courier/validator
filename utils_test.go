@@ -3,7 +3,7 @@ package validator
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestMaxIntAndMinInt(t *testing.T) {
@@ -18,6 +18,6 @@ func TestMaxIntAndMinInt(t *testing.T) {
 		{MaxInt(64), 9223372036854775807},
 	}
 	for _, values := range cases {
-		assert.Equal(t, values[1], values[0])
+		require.Equal(t, values[1], values[0])
 	}
 }

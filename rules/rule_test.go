@@ -3,7 +3,7 @@ package rules
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestParseRule(t *testing.T) {
@@ -61,8 +61,8 @@ func TestParseRule(t *testing.T) {
 		c := cases[i]
 		t.Run("rule:"+c[0], func(t *testing.T) {
 			r, err := ParseRuleString(c[0])
-			assert.NoError(t, err)
-			assert.Equal(t, c[1], string(r.Bytes()))
+			require.NoError(t, err)
+			require.Equal(t, c[1], string(r.Bytes()))
 		})
 	}
 }

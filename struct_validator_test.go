@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/go-courier/validator/errors"
 )
@@ -47,7 +47,7 @@ func TestStructValidator_New(t *testing.T) {
 	ValidatorMgrDefault.ResetCache()
 
 	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	validateStrings := make([]string, 0)
 
@@ -56,7 +56,7 @@ func TestStructValidator_New(t *testing.T) {
 		return true
 	})
 
-	assert.Len(t, validateStrings, 11)
+	require.Len(t, validateStrings, 11)
 }
 
 func TestStructValidator_NewFailed(t *testing.T) {
@@ -85,7 +85,7 @@ func TestStructValidator_NewFailed(t *testing.T) {
 
 	ValidatorMgrDefault.ResetCache()
 	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
-	assert.Error(t, err)
+	require.Error(t, err)
 	t.Log(err)
 
 	validateStrings := make([]string, 0)
@@ -94,11 +94,11 @@ func TestStructValidator_NewFailed(t *testing.T) {
 		validateStrings = append(validateStrings, key.(string))
 		return true
 	})
-	assert.Len(t, validateStrings, 0)
+	require.Len(t, validateStrings, 0)
 
 	{
 		_, err := validator.New(nil, reflect.TypeOf(""), ValidatorMgrDefault)
-		assert.Error(t, err)
+		require.Error(t, err)
 	}
 }
 
@@ -133,7 +133,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 	validator := NewStructValidator("json")
 
 	structValidator, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	errForValidate := structValidator.Validate(SomeStruct{
 		Slice: []string{"", ""},
@@ -144,7 +144,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 		},
 	})
 
-	assert.Equal(t, 19, errForValidate.(*errors.ErrorSet).Len())
+	require.Equal(t, 19, errForValidate.(*errors.ErrorSet).Len())
 
 	t.Log(errForValidate)
 }
