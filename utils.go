@@ -40,14 +40,14 @@ func RangeFromUint(min uint64, max *uint64) []*rules.RuleLit {
 	return ranges
 }
 
-func UintRange(tpe string, bitSize uint, ranges ...*rules.RuleLit) (uint64, *uint64, error) {
+func UintRange(typ string, bitSize uint, ranges ...*rules.RuleLit) (uint64, *uint64, error) {
 	parseUint := func(b []byte) (*uint64, error) {
 		if len(b) == 0 {
 			return nil, nil
 		}
 		n, err := strconv.ParseUint(string(b), 10, int(bitSize))
 		if err != nil {
-			return nil, fmt.Errorf(" %s value is not correct: %s", tpe, err)
+			return nil, fmt.Errorf(" %s value is not correct: %s", typ, err)
 		}
 		return &n, nil
 	}
@@ -68,7 +68,7 @@ func UintRange(tpe string, bitSize uint, ranges ...*rules.RuleLit) (uint64, *uin
 		}
 
 		if max != nil && *max < *min {
-			return 0, nil, fmt.Errorf("max %s value must be equal or large than min value %d, current %d", tpe, min, max)
+			return 0, nil, fmt.Errorf("max %s value must be equal or large than min value %d, current %d", typ, min, max)
 		}
 
 		return *min, max, nil

@@ -87,26 +87,25 @@ func (validator *UintValidator) SetDefaults() {
 	}
 }
 
+func isUintType(typ reflect.Type) bool {
+	switch typ.Kind() {
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		return true
+	}
+	return false
+}
+
 func (validator *UintValidator) Validate(v interface{}) error {
-	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
-		v = rv.Interface()
+	rv, ok := v.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(v)
 	}
 
-	val := uint64(0)
-	switch i := v.(type) {
-	case uint8:
-		val = uint64(i)
-	case uint16:
-		val = uint64(i)
-	case uint:
-		val = uint64(i)
-	case uint32:
-		val = uint64(i)
-	case uint64:
-		val = i
-	default:
-		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
+	if !isUintType(rv.Type()) {
+		return errors.NewUnsupportedTypeError(rv.Type().String(), validator.String())
 	}
+
+	val := rv.Uint()
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[val]; !ok {
@@ -149,7 +148,7 @@ func (validator *UintValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (UintValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+func (UintValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 	validator := &UintValidator{}
 
 	bitSizeBuf := &bytes.Buffer{}
@@ -222,30 +221,30 @@ func (UintValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (
 		}
 	}
 
-	return validator, validator.TypeCheck(tpe)
+	return validator, validator.TypeCheck(rule)
 }
 
-func (validator *UintValidator) TypeCheck(tpe reflect.Type) error {
-	switch tpe.Kind() {
+func (validator *UintValidator) TypeCheck(rule *Rule) error {
+	switch rule.Type.Kind() {
 	case reflect.Uint8:
 		if validator.BitSize > 8 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.String())
 		}
 		return nil
 	case reflect.Uint16:
 		if validator.BitSize > 16 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.String())
 		}
 		return nil
 	case reflect.Uint, reflect.Uint32:
 		if validator.BitSize > 32 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.String())
 		}
 		return nil
 	case reflect.Uint64:
 		return nil
 	}
-	return errors.NewUnsupportedTypeError(tpe, validator.String())
+	return errors.NewUnsupportedTypeError(rule.String(), validator.String())
 }
 
 func (validator *UintValidator) String() string {

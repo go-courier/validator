@@ -8,6 +8,8 @@ import (
 
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-courier/validator/types"
 )
 
 func TestNewValidatorLoader(t *testing.T) {
@@ -23,7 +25,7 @@ func TestNewValidatorLoader(t *testing.T) {
 		valuesPass   []interface{}
 		valuesFailed []interface{}
 		rule         string
-		tpe          reflect.Type
+		typ          reflect.Type
 		validator    *ValidatorLoader
 	}{
 		{
@@ -76,8 +78,8 @@ func TestNewValidatorLoader(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		t.Run(fmt.Sprintf("%s %s", c.tpe, c.rule), func(t *testing.T) {
-			validator, err := ValidatorMgrDefault.Compile([]byte(c.rule), c.tpe, nil)
+		t.Run(fmt.Sprintf("%s %s", c.typ, c.rule), func(t *testing.T) {
+			validator, err := ValidatorMgrDefault.Compile([]byte(c.rule), types.FromRType(c.typ), nil)
 			require.NoError(t, err)
 			if err != nil {
 				return
@@ -133,11 +135,13 @@ func TestNewValidatorLoaderFailed(t *testing.T) {
 		},
 	}
 
-	for tpe := range invalidRules {
-		for _, r := range invalidRules[tpe] {
-			_, err := ValidatorMgrDefault.Compile([]byte(r), tpe, nil)
-			require.Error(t, err)
-			t.Log(err)
+	for typ := range invalidRules {
+		for _, r := range invalidRules[typ] {
+			t.Run(fmt.Sprintf("%s validate %s", typ, r), func(t *testing.T) {
+				_, err := ValidatorMgrDefault.Compile([]byte(r), types.FromRType(typ), nil)
+				require.Error(t, err)
+				t.Log(err)
+			})
 		}
 	}
 }

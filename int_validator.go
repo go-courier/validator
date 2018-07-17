@@ -92,28 +92,25 @@ func (validator *IntValidator) SetDefaults() {
 	}
 }
 
+func isIntType(typ reflect.Type) bool {
+	switch typ.Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return true
+	}
+	return false
+}
+
 func (validator *IntValidator) Validate(v interface{}) error {
-	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
-		v = rv.Interface()
+	rv, ok := v.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(v)
 	}
 
-	val := int64(0)
-	switch i := v.(type) {
-	case int8:
-		val = int64(i)
-	case int16:
-		val = int64(i)
-	case int:
-		val = int64(i)
-	case int32:
-		val = int64(i)
-	case int64:
-		val = i
-	default:
-		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
+	if !isIntType(rv.Type()) {
+		return errors.NewUnsupportedTypeError(rv.Type().String(), validator.String())
 	}
 
-	validator.SetDefaults()
+	val := rv.Int()
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[val]; !ok {
@@ -159,7 +156,7 @@ func (validator *IntValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (IntValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+func (IntValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 	validator := &IntValidator{}
 
 	bitSizeBuf := &bytes.Buffer{}
@@ -229,40 +226,40 @@ func (IntValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (V
 		}
 	}
 
-	return validator, validator.TypeCheck(tpe)
+	return validator, validator.TypeCheck(rule)
 }
 
-func (validator *IntValidator) TypeCheck(tpe reflect.Type) error {
-	switch tpe.Kind() {
+func (validator *IntValidator) TypeCheck(rule *Rule) error {
+	switch rule.Type.Kind() {
 	case reflect.Int8:
 		if validator.BitSize > 8 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.Type)
 		}
 		return nil
 	case reflect.Int16:
 		if validator.BitSize > 16 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.Type)
 		}
 		return nil
 	case reflect.Int, reflect.Int32:
 		if validator.BitSize > 32 {
-			return fmt.Errorf("bit size too large for type %s", tpe)
+			return fmt.Errorf("bit size too large for type %s", rule.Type)
 		}
 		return nil
 	case reflect.Int64:
 		return nil
 	}
-	return errors.NewUnsupportedTypeError(tpe, validator.String())
+	return errors.NewUnsupportedTypeError(rule.String(), validator.String())
 }
 
-func intRange(tpe string, bitSize uint, ranges ...*rules.RuleLit) (*int64, *int64, error) {
+func intRange(typ string, bitSize uint, ranges ...*rules.RuleLit) (*int64, *int64, error) {
 	parseInt := func(b []byte) (*int64, error) {
 		if len(b) == 0 {
 			return nil, nil
 		}
 		n, err := strconv.ParseInt(string(b), 10, int(bitSize))
 		if err != nil {
-			return nil, fmt.Errorf("%s value is not correct: %s", tpe, err)
+			return nil, fmt.Errorf("%s value is not correct: %s", typ, err)
 		}
 		return &n, nil
 	}
@@ -277,7 +274,7 @@ func intRange(tpe string, bitSize uint, ranges ...*rules.RuleLit) (*int64, *int6
 			return nil, nil, fmt.Errorf("max %s", err)
 		}
 		if min != nil && max != nil && *max < *min {
-			return nil, nil, fmt.Errorf("max %s value must be equal or large than min expect %d, current %d", tpe, min, max)
+			return nil, nil, fmt.Errorf("max %s value must be equal or large than min expect %d, current %d", typ, min, max)
 		}
 
 		return min, max, nil

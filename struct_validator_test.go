@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/types"
 )
 
 type SomeTextMarshaler struct {
@@ -46,7 +47,9 @@ func TestStructValidator_New(t *testing.T) {
 
 	ValidatorMgrDefault.ResetCache()
 
-	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
+	_, err := validator.New(&Rule{
+		Type: types.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
+	}, ValidatorMgrDefault)
 	require.NoError(t, err)
 
 	validateStrings := make([]string, 0)
@@ -84,7 +87,9 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	validator := NewStructValidator("json")
 
 	ValidatorMgrDefault.ResetCache()
-	_, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
+	_, err := validator.New(&Rule{
+		Type: types.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
+	}, ValidatorMgrDefault)
 	require.Error(t, err)
 	t.Log(err)
 
@@ -97,7 +102,9 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	require.Len(t, validateStrings, 0)
 
 	{
-		_, err := validator.New(nil, reflect.TypeOf(""), ValidatorMgrDefault)
+		_, err := validator.New(&Rule{
+			Type: types.FromRType(reflect.TypeOf("")),
+		}, ValidatorMgrDefault)
 		require.Error(t, err)
 	}
 }
@@ -132,7 +139,9 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	structValidator, err := validator.New(nil, reflect.TypeOf(&SomeStruct{}).Elem(), ValidatorMgrDefault)
+	structValidator, err := validator.New(&Rule{
+		Type: types.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
+	}, ValidatorMgrDefault)
 	require.NoError(t, err)
 
 	errForValidate := structValidator.Validate(SomeStruct{

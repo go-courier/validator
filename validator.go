@@ -2,28 +2,56 @@ package validator
 
 import (
 	"fmt"
-	"reflect"
 	"sync"
 
-	"github.com/go-courier/reflectx"
-
 	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
+func MustParseRuleStringWithType(ruleStr string, typ types.Type) *Rule {
+	r, err := ParseRuleWithType([]byte(ruleStr), typ)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func ParseRuleWithType(ruleBytes []byte, typ types.Type) (*Rule, error) {
+	r, err := rules.ParseRule(ruleBytes)
+	if err != nil {
+		return nil, err
+	}
+	return &Rule{
+		Type: typ,
+		Rule: r,
+	}, nil
+}
+
+func (r *Rule) String() string {
+	return types.TypeFullName(r.Type) + string(r.Rule.Bytes())
+}
+
+type Rule struct {
+	*rules.Rule
+	Type types.Type
+}
+
+type RuleProcessor func(rule *Rule)
+
+// mgr for compiling validator
 type ValidatorMgr interface {
-	Compile(rule []byte, tpe reflect.Type, processor RuleProcessor) (Validator, error)
+	// compile rule string to validator
+	Compile([]byte, types.Type, RuleProcessor) (Validator, error)
 }
 
 var ValidatorMgrDefault = NewValidatorFactory()
-
-type RuleProcessor func(rule *rules.Rule)
 
 type ValidatorCreator interface {
 	// name and aliases of validator
 	// we will register validator to validator set by these names
 	Names() []string
 	// create new instance
-	New(rule *rules.Rule, tpe reflect.Type, validateMgr ValidatorMgr) (Validator, error)
+	New(*Rule, ValidatorMgr) (Validator, error)
 }
 
 type Validator interface {
@@ -57,40 +85,41 @@ func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
 	}
 }
 
-func (f *ValidatorFactory) MustCompile(rule []byte, tpe reflect.Type, ruleProcessor RuleProcessor) Validator {
-	v, err := f.Compile(rule, tpe, ruleProcessor)
+func (f *ValidatorFactory) MustCompile(rule []byte, typ types.Type, ruleProcessor RuleProcessor) Validator {
+	v, err := f.Compile(rule, typ, ruleProcessor)
 	if err != nil {
 		panic(err)
 	}
 	return v
 }
 
-func (f *ValidatorFactory) Compile(rule []byte, tpe reflect.Type, ruleProcessor RuleProcessor) (Validator, error) {
-	if len(rule) == 0 {
+func (f *ValidatorFactory) Compile(ruleBytes []byte, typ types.Type, ruleProcessor RuleProcessor) (Validator, error) {
+	if len(ruleBytes) == 0 {
 		return nil, nil
 	}
 
-	r, err := rules.ParseRule(rule)
+	rule, err := ParseRuleWithType(ruleBytes, typ)
 	if err != nil {
 		return nil, err
 	}
+
 	if ruleProcessor != nil {
-		ruleProcessor(r)
+		ruleProcessor(rule)
 	}
 
-	key := reflectx.FullTypeName(tpe) + string(r.Bytes())
+	key := rule.String()
 	if v, ok := f.cache.Load(key); ok {
 		return v.(Validator), nil
 	}
 
-	validatorCreator, ok := f.validatorSet[r.Name]
+	validatorCreator, ok := f.validatorSet[rule.Name]
 	if !ok {
-		return nil, fmt.Errorf("%s not match any validator", r.Name)
+		return nil, fmt.Errorf("%s not match any validator", rule.Name)
 	}
 
 	normalizeValidator := NewValidatorLoader(validatorCreator)
 
-	validator, err := normalizeValidator.New(r, tpe, f)
+	validator, err := normalizeValidator.New(rule, f)
 	if err != nil {
 		return nil, err
 	}

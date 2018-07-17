@@ -8,7 +8,7 @@ import (
 	"github.com/go-courier/reflectx"
 
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
 func NewValidatorLoader(validatorCreator ValidatorCreator) *ValidatorLoader {
@@ -22,7 +22,6 @@ type ValidatorLoader struct {
 	Validator
 	PreprocessStage
 
-	Type         reflect.Type
 	DefaultValue []byte
 	Optional     bool
 }
@@ -35,48 +34,48 @@ const (
 	PreprocessPtr
 )
 
-func (validator *ValidatorLoader) New(rule *rules.Rule, tpe reflect.Type, validateMgr ValidatorMgr) (Validator, error) {
-	loader := NewValidatorLoader(validator.ValidatorCreator)
+func normalize(typ types.Type) (types.Type, PreprocessStage) {
+	if t, ok := types.EncodingTextMarshalerTypeReplacer(typ); ok {
+		return t, PreprocessString
+	}
+	if typ.Kind() == reflect.Ptr {
+		return types.Deref(typ), PreprocessPtr
+	}
+	return typ, PreprocessSkip
+}
 
-	loader.Type = tpe
-	tpe, loader.PreprocessStage = loader.normalize(tpe)
+func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Validator, error) {
+	l := NewValidatorLoader(loader.ValidatorCreator)
 
-	v, err := loader.ValidatorCreator.New(rule, tpe, validateMgr)
+	typ := rule.Type
+
+	rule.Type, l.PreprocessStage = normalize(rule.Type)
+
+	v, err := loader.ValidatorCreator.New(rule, validateMgr)
 	if err != nil {
 		return nil, err
 	}
 
-	loader.Optional = rule.Optional
-	loader.DefaultValue = rule.DefaultValue
-	loader.Validator = v
+	l.Optional = rule.Optional
+	l.DefaultValue = rule.DefaultValue
+	l.Validator = v
 
-	if loader.DefaultValue != nil {
-		rv := reflectx.New(loader.Type)
-		if err := reflectx.UnmarshalText(rv, loader.DefaultValue); err != nil {
-			return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", loader.DefaultValue, loader.Type, err)
-		}
-		if err := loader.Validate(rv); err != nil {
-			return nil, fmt.Errorf("default value `%s` is not a valid value of %s: %s", loader.DefaultValue, v, err)
+	if l.DefaultValue != nil {
+		if rv, ok := types.TryNew(typ); ok {
+			if err := reflectx.UnmarshalText(rv, l.DefaultValue); err != nil {
+				return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", l.DefaultValue, typ, err)
+			}
+			if err := l.Validate(rv); err != nil {
+				return nil, fmt.Errorf("default value `%s` is not a valid value of %s: %s", l.DefaultValue, v, err)
+			}
 		}
 	}
 
-	return loader, nil
+	return l, nil
 }
 
-var interfaceEncodingTextMarshaler = reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-
-func (ValidatorLoader) normalize(tpe reflect.Type) (reflect.Type, PreprocessStage) {
-	if tpe.Implements(interfaceEncodingTextMarshaler) {
-		return reflect.TypeOf(""), PreprocessString
-	}
-	if tpe.Kind() == reflect.Ptr {
-		return reflectx.IndirectType(tpe), PreprocessPtr
-	}
-	return tpe, PreprocessSkip
-}
-
-func (validator *ValidatorLoader) Validate(v interface{}) error {
-	switch validator.PreprocessStage {
+func (loader *ValidatorLoader) Validate(v interface{}) error {
+	switch loader.PreprocessStage {
 	case PreprocessString:
 		if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
 			v = rv.Interface()
@@ -88,7 +87,7 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 			}
 			v = string(data)
 		}
-		return validator.Validator.Validate(v)
+		return loader.Validator.Validate(v)
 	default:
 		rv, ok := v.(reflect.Value)
 		if !ok {
@@ -97,12 +96,12 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 
 		isEmptyValue := reflectx.IsEmptyValue(rv)
 		if isEmptyValue {
-			if !validator.Optional {
+			if !loader.Optional {
 				return errors.MissingRequiredFieldError{}
 			}
 
-			if validator.DefaultValue != nil {
-				err := reflectx.UnmarshalText(rv, validator.DefaultValue)
+			if loader.DefaultValue != nil {
+				err := reflectx.UnmarshalText(rv, loader.DefaultValue)
 				if err != nil {
 					return fmt.Errorf("unmarshal default value failed")
 				}
@@ -114,6 +113,6 @@ func (validator *ValidatorLoader) Validate(v interface{}) error {
 			rv = rv.Elem()
 		}
 		rv = reflectx.Indirect(rv)
-		return validator.Validator.Validate(rv)
+		return loader.Validator.Validate(rv)
 	}
 }

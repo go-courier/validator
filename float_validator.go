@@ -85,22 +85,25 @@ func (FloatValidator) Names() []string {
 	return []string{"float", "double", "float32", "float64"}
 }
 
+func isFloatType(typ reflect.Type) bool {
+	switch typ.Kind() {
+	case reflect.Float32, reflect.Float64:
+		return true
+	}
+	return false
+}
+
 func (validator *FloatValidator) Validate(v interface{}) error {
-	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
-		v = rv.Interface()
+	rv, ok := v.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(v)
 	}
 
-	val := float64(0)
-	switch i := v.(type) {
-	case float32:
-		val = float64(i)
-	case float64:
-		val = i
-	default:
-		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
+	if !isFloatType(rv.Type()) {
+		return errors.NewUnsupportedTypeError(rv.Type().String(), validator.String())
 	}
 
-	validator.SetDefaults()
+	val := rv.Float()
 
 	decimalDigits := *validator.DecimalDigits
 
@@ -197,7 +200,7 @@ func round(f float64, n int) float64 {
 	return res
 }
 
-func (FloatValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+func (FloatValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 	validator := &FloatValidator{}
 
 	switch rule.Name {
@@ -283,26 +286,26 @@ func (FloatValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) 
 		}
 	}
 
-	return validator, validator.TypeCheck(tpe)
+	return validator, validator.TypeCheck(rule)
 }
 
-func (validator *FloatValidator) TypeCheck(tpe reflect.Type) error {
-	switch tpe.Kind() {
+func (validator *FloatValidator) TypeCheck(rule *Rule) error {
+	switch rule.Type.Kind() {
 	case reflect.Float32:
 		if validator.MaxDigits > 7 {
-			return fmt.Errorf("max digits too large for type %s", tpe)
+			return fmt.Errorf("max digits too large for type %s", rule)
 		}
 		return nil
 	case reflect.Float64:
 		return nil
 	}
-	return errors.NewUnsupportedTypeError(tpe, validator.String())
+	return errors.NewUnsupportedTypeError(rule.String(), validator.String())
 }
 
-func floatRange(tpe string, maxDigits uint, decimalDigits *uint, ranges ...*rules.RuleLit) (*float64, *float64, error) {
-	fullType := fmt.Sprintf("%s<%d>", tpe, maxDigits)
+func floatRange(typ string, maxDigits uint, decimalDigits *uint, ranges ...*rules.RuleLit) (*float64, *float64, error) {
+	fullType := fmt.Sprintf("%s<%d>", typ, maxDigits)
 	if decimalDigits != nil {
-		fullType = fmt.Sprintf("%s<%d,%d>", tpe, maxDigits, *decimalDigits)
+		fullType = fmt.Sprintf("%s<%d,%d>", typ, maxDigits, *decimalDigits)
 	}
 
 	parseMaybeFloat := func(b []byte) (*float64, error) {

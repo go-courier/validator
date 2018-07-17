@@ -5,7 +5,6 @@ import (
 	"regexp"
 
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/rules"
 )
 
 func NewRegexpStrfmtValidator(regexpStr string, name string, aliases ...string) *StrfmtValidator {
@@ -43,15 +42,15 @@ func (validator *StrfmtValidator) Names() []string {
 	return validator.names
 }
 
-func (validator StrfmtValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
-	return &validator, validator.TypeCheck(tpe)
+func (validator StrfmtValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+	return &validator, validator.TypeCheck(rule)
 }
 
-func (validator *StrfmtValidator) TypeCheck(tpe reflect.Type) error {
-	if tpe.Kind() == reflect.String {
+func (validator *StrfmtValidator) TypeCheck(rule *Rule) error {
+	if rule.Type.Kind() == reflect.String {
 		return nil
 	}
-	return errors.NewUnsupportedTypeError(tpe, validator.String())
+	return errors.NewUnsupportedTypeError(rule.String(), validator.String())
 }
 
 func (validator *StrfmtValidator) Validate(v interface{}) error {
@@ -60,7 +59,7 @@ func (validator *StrfmtValidator) Validate(v interface{}) error {
 	}
 	s, ok := v.(string)
 	if !ok {
-		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
+		return errors.NewUnsupportedTypeError(reflect.TypeOf(v).String(), validator.String())
 	}
 	return validator.validate(s)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
 func TestStringValidator_New(t *testing.T) {
@@ -52,10 +52,10 @@ func TestStringValidator_New(t *testing.T) {
 		},
 	}
 
-	for tpe, cases := range caseSet {
+	for typ, cases := range caseSet {
 		for _, c := range cases {
-			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, nil)
+			t.Run(fmt.Sprintf("%s %s|%s", typ, c.rule, c.expect.String()), func(t *testing.T) {
+				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, types.FromRType(typ)), nil)
 				require.NoError(t, err)
 				require.Equal(t, c.expect, v)
 			})
@@ -81,12 +81,12 @@ func TestStringValidator_NewFailed(t *testing.T) {
 
 	validator := &StringValidator{}
 
-	for tpe := range invalidRules {
-		for _, r := range invalidRules[tpe] {
-			rule := rules.MustParseRuleString(r)
+	for typ := range invalidRules {
+		for _, r := range invalidRules[typ] {
+			rule := MustParseRuleStringWithType(r, types.FromRType(typ))
 
-			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
+			t.Run(fmt.Sprintf("validate %s new failed: %s", typ, rule.Bytes()), func(t *testing.T) {
+				_, err := validator.New(rule, ValidatorMgrDefault)
 				require.Error(t, err)
 				t.Log(err)
 			})
@@ -95,12 +95,14 @@ func TestStringValidator_NewFailed(t *testing.T) {
 }
 
 func TestStringValidator_Validate(t *testing.T) {
+	type String string
+
 	cases := []struct {
 		values    []interface{}
 		validator *StringValidator
 		desc      string
 	}{
-		{[]interface{}{reflect.ValueOf("a"), "aa", "aaa", "aaaa", "aaaaa"}, &StringValidator{
+		{[]interface{}{reflect.ValueOf("a"), String("aa"), "aaa", "aaaa", "aaaaa"}, &StringValidator{
 			MaxLength: ptr.Uint64(5),
 		}, "less than"},
 		{[]interface{}{"一", "一一", "一一一"}, &StringValidator{
@@ -128,6 +130,8 @@ func TestStringValidator_Validate(t *testing.T) {
 }
 
 func TestStringValidator_ValidateFailed(t *testing.T) {
+	type String string
+
 	cases := []struct {
 		values    []interface{}
 		validator *StringValidator
@@ -142,10 +146,10 @@ func TestStringValidator_ValidateFailed(t *testing.T) {
 		{[]interface{}{"-word", "-word1"}, &StringValidator{
 			Pattern: regexp.MustCompile(`^\w+`),
 		}, "regexp not matched"},
-		{[]interface{}{1, 1.1, reflect.ValueOf(1)}, &StringValidator{
+		{[]interface{}{1.1, reflect.ValueOf(1.1)}, &StringValidator{
 			MinLength: 5,
 		}, "unsupported types"},
-		{[]interface{}{"a", "aa", "aaa", "aaaa"}, &StringValidator{
+		{[]interface{}{"a", "aa", String("aaa"), []byte("aaaa")}, &StringValidator{
 			MinLength: 5,
 		}, "too small"},
 		{[]interface{}{"aa", "aaa", "aaaa", "aaaaa"}, &StringValidator{

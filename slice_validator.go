@@ -42,15 +42,8 @@ func (SliceValidator) Names() []string {
 func (validator *SliceValidator) Validate(v interface{}) error {
 	switch rv := v.(type) {
 	case reflect.Value:
-		if rv.Kind() != reflect.Slice {
-			return errors.NewUnsupportedTypeError(rv.Type(), validator.String())
-		}
 		return validator.ValidateReflectValue(rv)
 	default:
-		tpe := reflect.TypeOf(v)
-		if tpe.Kind() != reflect.Slice {
-			return errors.NewUnsupportedTypeError(tpe, validator.String())
-		}
 		return validator.ValidateReflectValue(reflect.ValueOf(v))
 	}
 }
@@ -88,7 +81,7 @@ func (validator *SliceValidator) ValidateReflectValue(rv reflect.Value) error {
 	return nil
 }
 
-func (SliceValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+func (SliceValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 	sliceValidator := &SliceValidator{}
 
 	if rule.ExclusiveLeft || rule.ExclusiveRight {
@@ -107,14 +100,14 @@ func (SliceValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) 
 		sliceValidator.MaxItems = max
 	}
 
-	switch tpe.Kind() {
+	switch rule.Type.Kind() {
 	case reflect.Array:
-		if tpe.Len() != int(sliceValidator.MinItems) {
-			return nil, fmt.Errorf("length(%d) or rule should equal length(%d) of array", sliceValidator.MinItems, tpe.Len())
+		if rule.Type.Len() != int(sliceValidator.MinItems) {
+			return nil, fmt.Errorf("length(%d) or rule should equal length(%d) of array", sliceValidator.MinItems, rule.Type.Len())
 		}
 	case reflect.Slice:
 	default:
-		return nil, errors.NewUnsupportedTypeError(tpe, sliceValidator.String())
+		return nil, errors.NewUnsupportedTypeError(rule.String(), sliceValidator.String())
 	}
 
 	if rule.Params != nil {
@@ -125,7 +118,7 @@ func (SliceValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) 
 		if !ok {
 			return nil, fmt.Errorf("slice parameter should be a valid rule")
 		}
-		v, err := mgr.Compile(r.RAW, tpe.Elem(), nil)
+		v, err := mgr.Compile(r.RAW, rule.Type.Elem(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("slice elem %s", err)
 		}

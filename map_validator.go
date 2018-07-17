@@ -40,15 +40,8 @@ func (MapValidator) Names() []string {
 func (validator *MapValidator) Validate(v interface{}) error {
 	switch rv := v.(type) {
 	case reflect.Value:
-		if rv.Kind() != reflect.Map {
-			return errors.NewUnsupportedTypeError(rv.Type(), validator.String())
-		}
 		return validator.ValidateReflectValue(rv)
 	default:
-		tpe := reflect.TypeOf(v)
-		if tpe.Kind() != reflect.Map {
-			return errors.NewUnsupportedTypeError(tpe, validator.String())
-		}
 		return validator.ValidateReflectValue(reflect.ValueOf(v))
 	}
 }
@@ -98,9 +91,9 @@ func (validator *MapValidator) ValidateReflectValue(rv reflect.Value) error {
 	return nil
 }
 
-func (validator *MapValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
-	if tpe.Kind() != reflect.Map {
-		return nil, errors.NewUnsupportedTypeError(tpe, validator.String())
+func (validator *MapValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+	if rule.Type.Kind() != reflect.Map {
+		return nil, errors.NewUnsupportedTypeError(rule.String(), validator.String())
 	}
 
 	mapValidator := &MapValidator{}
@@ -129,13 +122,13 @@ func (validator *MapValidator) New(rule *rules.Rule, tpe reflect.Type, mgr Valid
 			case *rules.Rule:
 				switch i {
 				case 0:
-					v, err := mgr.Compile(r.RAW, tpe.Key(), nil)
+					v, err := mgr.Compile(r.RAW, rule.Type.Key(), nil)
 					if err != nil {
 						return nil, fmt.Errorf("map key %s", err)
 					}
 					mapValidator.KeyValidator = v
 				case 1:
-					v, err := mgr.Compile(r.RAW, tpe.Elem(), nil)
+					v, err := mgr.Compile(r.RAW, rule.Type.Elem(), nil)
 					if err != nil {
 						return nil, fmt.Errorf("map elem %s", err)
 					}

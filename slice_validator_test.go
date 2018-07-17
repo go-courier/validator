@@ -8,7 +8,7 @@ import (
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
 func TestSliceValidator_New(t *testing.T) {
@@ -23,7 +23,7 @@ func TestSliceValidator_New(t *testing.T) {
 			}},
 			{"@slice<@string[1,2]>[1,]", &SliceValidator{
 				MinItems:      1,
-				ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[1,2]"), reflect.TypeOf(""), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[1,2]"), types.FromRType(reflect.TypeOf("")), nil),
 			}},
 			{"@slice[1]", &SliceValidator{
 				MinItems: 1,
@@ -32,10 +32,10 @@ func TestSliceValidator_New(t *testing.T) {
 		},
 	}
 
-	for tpe, cases := range caseSet {
+	for typ, cases := range caseSet {
 		for _, c := range cases {
-			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, ValidatorMgrDefault)
+			t.Run(fmt.Sprintf("%s %s|%s", typ, c.rule, c.expect.String()), func(t *testing.T) {
+				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, types.FromRType(typ)), ValidatorMgrDefault)
 				require.NoError(t, err)
 				require.Equal(t, c.expect, v)
 			})
@@ -66,12 +66,12 @@ func TestSliceValidator_NewFailed(t *testing.T) {
 
 	validator := &SliceValidator{}
 
-	for tpe := range invalidRules {
-		for _, r := range invalidRules[tpe] {
-			rule := rules.MustParseRuleString(r)
+	for typ := range invalidRules {
+		for _, r := range invalidRules[typ] {
+			rule := MustParseRuleStringWithType(r, types.FromRType(typ))
 
-			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, ValidatorMgrDefault)
+			t.Run(fmt.Sprintf("validate %s new failed: %s", typ, rule.Bytes()), func(t *testing.T) {
+				_, err := validator.New(rule, ValidatorMgrDefault)
 				require.Error(t, err)
 				t.Log(err)
 			})
@@ -100,7 +100,7 @@ func TestSliceValidator_Validate(t *testing.T) {
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[0,]"), reflect.TypeOf(""), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[0,]"), types.FromRType(reflect.TypeOf("")), nil),
 		}, "elem validate"},
 	}
 
@@ -129,20 +129,13 @@ func TestSliceValidator_ValidateFailed(t *testing.T) {
 			MaxItems: ptr.Uint64(4),
 		}, "out of range"},
 		{[]interface{}{
-			reflect.ValueOf(1),
-			1,
-		}, &SliceValidator{
-			MinItems: 2,
-			MaxItems: ptr.Uint64(4),
-		}, "unsupported type"},
-		{[]interface{}{
 			[]string{"1", "2"},
 			[]string{"1", "2", "3"},
 			[]string{"1", "2", "3", "4"},
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[2,]"), reflect.TypeOf(""), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile([]byte("@string[2,]"), types.FromRType(reflect.TypeOf("")), nil),
 		}, "elem validate failed"},
 	}
 

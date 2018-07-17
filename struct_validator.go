@@ -3,12 +3,11 @@ package validator
 import (
 	"go/ast"
 	"reflect"
-	"strings"
 
 	"github.com/go-courier/reflectx"
 
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
 func NewStructValidator(namedTagKey string) *StructValidator {
@@ -20,7 +19,6 @@ func NewStructValidator(namedTagKey string) *StructValidator {
 
 type StructValidator struct {
 	namedTagKey     string
-	Type            reflect.Type
 	fieldValidators map[string]Validator
 }
 
@@ -35,15 +33,8 @@ func (StructValidator) Names() []string {
 func (validator *StructValidator) Validate(v interface{}) error {
 	switch rv := v.(type) {
 	case reflect.Value:
-		if rv.Type().String() != validator.Type.String() {
-			return errors.NewUnsupportedTypeError(rv.Type(), validator.String())
-		}
 		return validator.ValidateReflectValue(rv)
 	default:
-		tpe := reflect.TypeOf(v)
-		if tpe.String() != validator.Type.String() {
-			return errors.NewUnsupportedTypeError(validator.Type, validator.String())
-		}
 		return validator.ValidateReflectValue(reflect.ValueOf(v))
 	}
 }
@@ -55,11 +46,11 @@ func (validator *StructValidator) ValidateReflectValue(rv reflect.Value) error {
 }
 
 func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.ErrorSet) {
-	tpe := rv.Type()
+	typ := rv.Type()
 	for i := 0; i < rv.NumField(); i++ {
-		field := tpe.Field(i)
+		field := typ.Field(i)
 		fieldValue := rv.Field(i)
-		fieldName, _, exists := fieldInfo(&field, validator.namedTagKey)
+		fieldName, _, exists := types.FieldDisplayName(field.Tag, validator.namedTagKey, field.Name)
 
 		if !ast.IsExported(field.Name) || fieldName == "-" {
 			continue
@@ -91,77 +82,44 @@ const (
 	TagDefault  = "default"
 )
 
-func (validator *StructValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
-	if tpe.Kind() != reflect.Struct {
-		return nil, errors.NewUnsupportedTypeError(tpe, validator.String())
+func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+	if rule.Type.Kind() != reflect.Struct {
+		return nil, errors.NewUnsupportedTypeError(rule.String(), validator.String())
 	}
+
 	structValidator := NewStructValidator(validator.namedTagKey)
-	structValidator.Type = tpe
-	errSet := errors.NewErrorSet(tpe.Name())
-	structValidator.scan(tpe, errSet, mgr)
-	return structValidator, errSet.Err()
-}
+	errSet := errors.NewErrorSet("")
 
-func (validator *StructValidator) scan(structTpe reflect.Type, errSet *errors.ErrorSet, mgr ValidatorMgr) {
-	for i := 0; i < structTpe.NumField(); i++ {
-		field := structTpe.Field(i)
-		fieldName, omitempty, exists := fieldInfo(&field, validator.namedTagKey)
+	types.EachField(rule.Type, validator.namedTagKey, func(field types.StructField, fieldDisplayName string, omitempty bool) bool {
+		tagValidateValue := field.Tag().Get(TagValidate)
 
-		if !ast.IsExported(field.Name) || fieldName == "-" {
-			continue
-		}
-
-		fieldType := reflectx.IndirectType(field.Type)
-		isStructType := fieldType.Kind() == reflect.Struct
-
-		if field.Anonymous && isStructType && !exists {
-			validator.scan(fieldType, errSet, mgr)
-			continue
-		}
-
-		tagValidateValue, ok := field.Tag.Lookup(TagValidate)
-		if !ok {
-			if !isStructType {
-				continue
-			}
+		if tagValidateValue == "" && types.Deref(field.Type()).Kind() == reflect.Struct {
 			tagValidateValue = "@struct"
 		}
 
-		fieldValidator, err := mgr.Compile([]byte(tagValidateValue), field.Type, func(rule *rules.Rule) {
+		fieldValidator, err := mgr.Compile([]byte(tagValidateValue), field.Type(), func(rule *Rule) {
 			if omitempty {
 				rule.Optional = omitempty
 			}
-
-			if defaultValue, ok := field.Tag.Lookup(TagDefault); ok {
+			if defaultValue, ok := field.Tag().Lookup(TagDefault); ok {
 				rule.DefaultValue = []byte(defaultValue)
 			}
 		})
 
 		if err != nil {
-			errSet.AddErr(err, field.Name)
-			continue
+			errSet.AddErr(err, field.Name())
+			return true
 		}
 
-		validator.fieldValidators[field.Name] = fieldValidator
-	}
+		if fieldValidator != nil {
+			structValidator.fieldValidators[field.Name()] = fieldValidator
+		}
+		return true
+	})
+
+	return structValidator, errSet.Err()
 }
 
 func (validator *StructValidator) String() string {
 	return "@" + validator.Names()[0]
-}
-
-func fieldInfo(structField *reflect.StructField, namedTagKey string) (string, bool, bool) {
-	jsonTag, exists := structField.Tag.Lookup(namedTagKey)
-	if !exists {
-		return structField.Name, false, exists
-	}
-	omitempty := strings.Index(jsonTag, "omitempty") > 0
-	idxOfComma := strings.IndexRune(jsonTag, ',')
-	if jsonTag == "" || idxOfComma == 0 {
-		return structField.Name, omitempty, true
-	}
-	if idxOfComma == -1 {
-		return jsonTag, omitempty, true
-	}
-	return jsonTag[0 : idxOfComma-1], omitempty, true
 }

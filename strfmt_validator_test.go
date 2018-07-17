@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/go-courier/validator/types"
 )
 
 func ExampleNewRegexpStrfmtValidator() {
@@ -39,7 +41,7 @@ func TestStrfmtValidator_Validate(t *testing.T) {
 				f := NewValidatorFactory()
 				f.Register(c.validator)
 
-				validator, _ := f.Compile([]byte("@alpha"), reflect.TypeOf(""), nil)
+				validator, _ := f.Compile([]byte("@alpha"), types.FromRType(reflect.TypeOf("")), nil)
 				err := validator.Validate(v)
 				require.NoError(t, err)
 			})

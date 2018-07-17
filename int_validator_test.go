@@ -8,7 +8,7 @@ import (
 	"github.com/go-courier/ptr"
 	"github.com/stretchr/testify/require"
 
-	"github.com/go-courier/validator/rules"
+	"github.com/go-courier/validator/types"
 )
 
 func TestIntValidator_New(t *testing.T) {
@@ -81,12 +81,12 @@ func TestIntValidator_New(t *testing.T) {
 		},
 	}
 
-	for tpe, cases := range caseSet {
+	for typ, cases := range caseSet {
 		for _, c := range cases {
 			c.expect.SetDefaults()
 
-			t.Run(fmt.Sprintf("%s %s|%s", tpe, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(rules.MustParseRuleString(c.rule), tpe, nil)
+			t.Run(fmt.Sprintf("%s %s|%s", typ, c.rule, c.expect.String()), func(t *testing.T) {
+				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, types.FromRType(typ)), nil)
 				require.NoError(t, err)
 				require.Equal(t, c.expect, v)
 			})
@@ -124,12 +124,12 @@ func TestIntValidator_NewFailed(t *testing.T) {
 
 	validator := &IntValidator{}
 
-	for tpe := range invalidRules {
-		for _, r := range invalidRules[tpe] {
-			rule := rules.MustParseRuleString(r)
+	for typ := range invalidRules {
+		for _, r := range invalidRules[typ] {
+			rule := MustParseRuleStringWithType(r, types.FromRType(typ))
 
-			t.Run(fmt.Sprintf("validate %s new failed: %s", tpe, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, tpe, nil)
+			t.Run(fmt.Sprintf("validate %s new failed: %s", typ, rule.Bytes()), func(t *testing.T) {
+				_, err := validator.New(rule, nil)
 				require.Error(t, err)
 			})
 		}

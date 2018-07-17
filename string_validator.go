@@ -106,15 +106,19 @@ func (StringValidator) Names() []string {
 	return []string{"string", "char"}
 }
 
+var typString = reflect.TypeOf("")
+
 func (validator *StringValidator) Validate(v interface{}) error {
-	if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
-		v = rv.Interface()
+	rv, ok := v.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(v)
 	}
 
-	s, ok := v.(string)
-	if !ok {
-		return errors.NewUnsupportedTypeError(reflect.TypeOf(v), validator.String())
+	if !rv.Type().ConvertibleTo(typString) {
+		return errors.NewUnsupportedTypeError(rv.Type().String(), validator.String())
 	}
+
+	s := rv.Convert(typString).String()
 
 	if validator.Enums != nil {
 		if _, ok := validator.Enums[s]; !ok {
@@ -163,7 +167,7 @@ func (validator *StringValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (StringValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr) (Validator, error) {
+func (StringValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 	validator := &StringValidator{}
 
 	if rule.ExclusiveLeft || rule.ExclusiveRight {
@@ -185,7 +189,7 @@ func (StringValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr)
 
 	if rule.Pattern != nil {
 		validator.Pattern = rule.Pattern
-		return validator, validator.TypeCheck(tpe)
+		return validator, validator.TypeCheck(rule)
 	}
 
 	if rule.Values != nil {
@@ -205,14 +209,14 @@ func (StringValidator) New(rule *rules.Rule, tpe reflect.Type, mgr ValidatorMgr)
 		validator.MaxLength = max
 	}
 
-	return validator, validator.TypeCheck(tpe)
+	return validator, validator.TypeCheck(rule)
 }
 
-func (validator *StringValidator) TypeCheck(tpe reflect.Type) error {
-	if tpe.Kind() == reflect.String {
+func (validator *StringValidator) TypeCheck(rule *Rule) error {
+	if rule.Type.Kind() == reflect.String {
 		return nil
 	}
-	return errors.NewUnsupportedTypeError(tpe, validator.String())
+	return errors.NewUnsupportedTypeError(rule.String(), validator.String())
 }
 
 func (validator *StringValidator) String() string {

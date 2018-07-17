@@ -154,10 +154,10 @@ func BenchmarkImplementsOrTypeAssign(b *testing.B) {
 	rv := reflect.ValueOf(&val)
 
 	b.Run("implements", func(b *testing.B) {
-		tpe := rv.Type()
+		typ := rv.Type()
 
 		for i := 0; i < b.N; i++ {
-			if ok := tpe.Implements(textMarshalerType); ok {
+			if ok := typ.Implements(textMarshalerType); ok {
 
 			}
 		}
