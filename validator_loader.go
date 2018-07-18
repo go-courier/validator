@@ -18,7 +18,7 @@ func NewValidatorLoader(validatorCreator ValidatorCreator) *ValidatorLoader {
 }
 
 type ValidatorLoader struct {
-	ValidatorCreator
+	ValidatorCreator ValidatorCreator
 	Validator
 	PreprocessStage
 

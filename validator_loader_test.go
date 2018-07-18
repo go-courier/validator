@@ -44,6 +44,19 @@ func TestNewValidatorLoader(t *testing.T) {
 		},
 		{
 			[]interface{}{
+				Duration(1 * time.Second),
+				Duration(1 * time.Second),
+			},
+			[]interface{}{
+			},
+			"@string",
+			reflect.TypeOf(Duration(1 * time.Second)),
+			&ValidatorLoader{
+				PreprocessStage: PreprocessString,
+			},
+		},
+		{
+			[]interface{}{
 				val,
 				reflect.ValueOf(someStruct).Elem().FieldByName("Value"),
 				reflect.ValueOf(val),
@@ -105,21 +118,6 @@ func TestNewValidatorLoader(t *testing.T) {
 	}
 }
 
-type Duration time.Duration
-
-func (d Duration) MarshalText() ([]byte, error) {
-	return []byte(time.Duration(d).String()), nil
-}
-
-func (d *Duration) UnmarshalText(data []byte) error {
-	dur, err := time.ParseDuration(string(data))
-	if err != nil {
-		return err
-	}
-	*d = Duration(dur)
-	return nil
-}
-
 func TestNewValidatorLoaderFailed(t *testing.T) {
 	invalidRules := map[reflect.Type][]string{
 		reflect.TypeOf(1): {
@@ -144,4 +142,19 @@ func TestNewValidatorLoaderFailed(t *testing.T) {
 			})
 		}
 	}
+}
+
+type Duration time.Duration
+
+func (d Duration) MarshalText() ([]byte, error) {
+	return []byte(time.Duration(d).String()), nil
+}
+
+func (d *Duration) UnmarshalText(data []byte) error {
+	dur, err := time.ParseDuration(string(data))
+	if err != nil {
+		return err
+	}
+	*d = Duration(dur)
+	return nil
 }

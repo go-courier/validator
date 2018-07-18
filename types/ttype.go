@@ -3,11 +3,12 @@ package types
 import (
 	"bytes"
 	"go/ast"
-	"go/build"
 	"go/types"
 	"reflect"
 	"strconv"
 	"sync"
+	"go/importer"
+	"fmt"
 )
 
 var (
@@ -19,17 +20,18 @@ func NewPackage(importPath string) *types.Package {
 	if v, ok := pkgCache.Load(importPath); ok {
 		return v.(*types.Package)
 	}
-	pk, _ := build.Default.Import(importPath, "", build.ImportComment)
-	pkg := types.NewPackage(pk.ImportPath, pk.Name)
+	pkg, _ := importer.For("source", nil).Import(importPath)
 	pkgCache.Store(importPath, pkg)
 	return pkg
+}
+
+func TypeByName(importPath string, name string) types.Type {
+	return NewPackage(importPath).Scope().Lookup(name).Type()
 }
 
 func NewTypesTypeFromReflectType(rtype reflect.Type) types.Type {
 	underlying := func() types.Type {
 		switch rtype.Kind() {
-		case reflect.Ptr:
-			return types.NewPointer(NewTypesTypeFromReflectType(rtype.Elem()))
 		case reflect.Array:
 			return types.NewArray(NewTypesTypeFromReflectType(rtype.Elem()), int64(rtype.Len()))
 		case reflect.Slice:
@@ -42,12 +44,12 @@ func NewTypesTypeFromReflectType(rtype reflect.Type) types.Type {
 			params := make([]*types.Var, rtype.NumIn())
 			for i := range params {
 				param := rtype.In(i)
-				params[i] = types.NewParam(0, NewPackage(param.PkgPath()), param.Name(), NewTypesTypeFromReflectType(param))
+				params[i] = types.NewParam(0, NewPackage(param.PkgPath()), "", NewTypesTypeFromReflectType(param))
 			}
 			results := make([]*types.Var, rtype.NumOut())
 			for i := range results {
 				result := rtype.Out(i)
-				results[i] = types.NewParam(0, NewPackage(result.PkgPath()), result.Name(), NewTypesTypeFromReflectType(result))
+				results[i] = types.NewParam(0, NewPackage(result.PkgPath()), "", NewTypesTypeFromReflectType(result))
 			}
 			return types.NewSignature(
 				nil,
@@ -59,6 +61,7 @@ func NewTypesTypeFromReflectType(rtype reflect.Type) types.Type {
 			funcs := make([]*types.Func, rtype.NumMethod())
 			for i := range funcs {
 				m := rtype.Method(i)
+
 				funcs[i] = types.NewFunc(
 					0,
 					NewPackage(m.PkgPath),
@@ -122,67 +125,80 @@ func NewTypesTypeFromReflectType(rtype reflect.Type) types.Type {
 		return nil
 	}
 
-	pkgPath := rtype.PkgPath()
+	ptrCount := 0
+
+	mayWithPtr := func(typ types.Type) types.Type {
+		for ptrCount > 0 {
+			typ = types.NewPointer(typ)
+			ptrCount--
+		}
+		return typ
+	}
+
+	for rtype.Kind() == reflect.Ptr {
+		rtype = rtype.Elem()
+		ptrCount++
+	}
+
 	name := rtype.Name()
+	pkgPath := rtype.PkgPath()
 
-	if name == "error" || pkgPath != "" {
-		pkg := (*types.Package)(nil)
+	if name == "error" && pkgPath == "" {
+		return mayWithPtr(TypeByName("errors", "New").Underlying().(*types.Signature).Results().At(0).Type())
+	}
 
+	if pkgPath != "" {
 		key := name
 		if pkgPath != "" {
 			key = pkgPath + "." + name
 		}
 
 		if typ, ok := typesCache.Load(key); ok {
-			return typ.(types.Type)
+			return mayWithPtr(typ.(types.Type))
 		}
 
-		if pkgPath != "" {
-			pkg = NewPackage(pkgPath)
-		}
-
-		typ := underlying()
-		obj := types.NewTypeName(0, pkg, name, typ)
-
-		ttype := types.NewNamed(obj, typ, nil)
+		ttype := TypeByName(pkgPath, name)
 		typesCache.Store(key, ttype)
-
-		numMethod := rtype.NumMethod()
-		if name != "error" && numMethod > 0 {
-			funcs := make([]*types.Func, numMethod)
-
-			for i := range funcs {
-				m := rtype.Method(i)
-				funcs[i] = types.NewFunc(
-					0,
-					NewPackage(m.PkgPath),
-					m.Name,
-					NewTypesTypeFromReflectType(m.Type).(*types.Signature),
-				)
-			}
-			*ttype = *types.NewNamed(obj, typ, funcs)
-		}
-
-		return ttype
+		return mayWithPtr(ttype)
 	}
 
-	return underlying()
+	return mayWithPtr(underlying())
 }
 
 func FromTType(ttype types.Type) *TType {
-	return &TType{
+	t := &TType{
 		Type: ttype,
 	}
+	t.NumMethod()
+	return t
 }
 
 type TType struct {
-	Type types.Type
+	Type              types.Type
+	nonPointerMethods []*types.Func
 }
 
 func (ttype *TType) NumMethod() int {
 	switch t := ttype.Type.(type) {
 	case *types.Named:
-		return t.NumMethods()
+		if ttype.Kind() == reflect.Interface {
+			return t.Underlying().(*types.Interface).NumMethods()
+		}
+		if ttype.nonPointerMethods == nil {
+			for i := 0; i < t.NumMethods(); i++ {
+				m := t.Method(i)
+				recv := m.Type().(*types.Signature).Recv()
+				if _, ok := recv.Type().(*types.Pointer); !ok {
+					ttype.nonPointerMethods = append(ttype.nonPointerMethods, m)
+				}
+			}
+		}
+		return len(ttype.nonPointerMethods)
+	case *types.Pointer:
+		if n, ok := t.Elem().(*types.Named); ok {
+			return n.NumMethods()
+		}
+		return 0
 	case *types.Interface:
 		return t.NumMethods()
 	}
@@ -192,7 +208,15 @@ func (ttype *TType) NumMethod() int {
 func (ttype *TType) Method(i int) Method {
 	switch t := ttype.Type.(type) {
 	case *types.Named:
-		return &TMethod{Func: t.Method(i)}
+		if ttype.Kind() == reflect.Interface {
+			return &TMethod{Func: t.Underlying().(*types.Interface).Method(i)}
+		}
+		return &TMethod{Func: ttype.nonPointerMethods[i]}
+	case *types.Pointer:
+		if n, ok := t.Elem().(*types.Named); ok {
+			return &TMethod{Func: n.Method(i), PointerRecv: true}
+		}
+		return nil
 	case *types.Interface:
 		return &TMethod{Func: t.Method(i)}
 	}
@@ -422,7 +446,21 @@ func (ttype *TType) Len() int {
 }
 
 func (ttype *TType) String() string {
+	typeString := func(typ types.Type) string {
+		return types.TypeString(typ, func(pkg *types.Package) string {
+			return pkg.Name()
+		})
+	}
+
 	switch t := ttype.Type.(type) {
+	case *types.Basic:
+		return ttype.Kind().String()
+	case *types.Slice:
+		return "[]" + FromTType(t.Elem()).String()
+	case *types.Array:
+		return fmt.Sprintf("[%d]", t.Len()) + FromTType(t.Elem()).String()
+	case *types.Map:
+		return fmt.Sprintf("map[%s]%s", FromTType(t.Key()), FromTType(t.Elem()))
 	case *types.Chan:
 		return "chan " + FromTType(t.Elem()).String()
 	case *types.Struct:
@@ -484,11 +522,32 @@ func (ttype *TType) String() string {
 		{
 			params := t.Params()
 			n := params.Len()
-			for i := 0; i < n; i++ {
-				if i > 0 {
-					buf.WriteString(", ")
-				}
 
+			recv := t.Recv()
+			if recv != nil {
+
+				switch recvTyp := recv.Type().(type) {
+				case *types.Pointer:
+					elem := recvTyp.Elem()
+
+					if FromTType(elem).Kind() != reflect.Interface {
+						buf.WriteRune('*')
+						buf.WriteString(typeString(elem))
+						if n > 0 {
+							buf.WriteString(", ")
+						}
+					}
+				case *types.Named:
+					if FromTType(recvTyp).Kind() != reflect.Interface {
+						buf.WriteString(typeString(recvTyp))
+						if n > 0 {
+							buf.WriteString(", ")
+						}
+					}
+				}
+			}
+
+			for i := 0; i < n; i++ {
 				p := params.At(i)
 
 				if i == n-1 && t.Variadic() {
@@ -496,6 +555,10 @@ func (ttype *TType) String() string {
 					buf.WriteString(FromTType(p.Type().(*types.Slice).Elem()).String())
 				} else {
 					buf.WriteString(FromTType(p.Type()).String())
+				}
+
+				if i < n-1 {
+					buf.WriteString(", ")
 				}
 			}
 			buf.WriteString(")")
@@ -525,9 +588,8 @@ func (ttype *TType) String() string {
 
 		return buf.String()
 	}
-	return types.TypeString(ttype.Type, func(pkg *types.Package) string {
-		return pkg.Name()
-	})
+
+	return typeString(ttype.Type)
 }
 
 type TStructField struct {
@@ -555,7 +617,8 @@ func (f *TStructField) Type() Type {
 }
 
 type TMethod struct {
-	Func *types.Func
+	PointerRecv bool
+	Func        *types.Func
 }
 
 func (m *TMethod) PkgPath() string {
@@ -574,5 +637,18 @@ func (m *TMethod) Name() string {
 }
 
 func (m *TMethod) Type() Type {
-	return FromTType(m.Func.Type())
+	s := m.Func.Type().(*types.Signature)
+	recv := s.Recv()
+	if recv != nil {
+		if _, ok := recv.Type().(*types.Pointer); !ok && m.PointerRecv {
+			return FromTType(types.NewSignature(
+				types.NewVar(0, recv.Pkg(), recv.Name(), types.NewPointer(recv.Type())),
+				s.Params(),
+				s.Results(),
+				s.Variadic(),
+			))
+		}
+		return FromTType(s)
+	}
+	return FromTType(s)
 }

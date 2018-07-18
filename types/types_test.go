@@ -21,6 +21,9 @@ func TestType(t *testing.T) {
 	}
 
 	values := []interface{}{
+		func() *typ.Enum { v := typ.ENUM__ONE; return &v }(),
+		typ.ENUM__ONE,
+
 		reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem(),
 		reflect.TypeOf((*interface {
 			encoding.TextMarshaler
@@ -84,9 +87,9 @@ func TestType(t *testing.T) {
 		struct{}{},
 		struct {
 			typ.Part
-			Part2  typ2.Part
-			a      string
-			A      string `json:"a"`
+			Part2 typ2.Part
+			a     string
+			A     string `json:"a"`
 			Struct struct {
 				B string
 			}
@@ -121,7 +124,7 @@ func check(t *testing.T, v interface{}) {
 
 		for i := 0; i < rt.NumMethod(); i++ {
 			rMethod := rt.Method(i)
-			tMethod := tt.Method(i)
+			tMethod, _ := tt.MethodByName(rMethod.Name())
 
 			require.Equal(t, rMethod.Name(), tMethod.Name())
 			require.Equal(t, rMethod.PkgPath(), tMethod.PkgPath())

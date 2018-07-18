@@ -1,6 +1,8 @@
 package typ
 
 import (
+	"fmt"
+
 	"github.com/go-courier/validator/types/__fixtures__/typ/typ"
 )
 
@@ -50,4 +52,31 @@ type Part struct {
 
 type Interface interface {
 	String() string
+}
+
+type Enum int
+
+const (
+	ENUM__ONE Enum = iota + 1 // one
+	ENUM__TWO                 // two
+)
+
+func (e *Enum) UnmarshalText(text []byte) error {
+	switch string(text) {
+	case "ONE":
+		*e = ENUM__ONE
+	case "TWO":
+		*e = ENUM__TWO
+	}
+	return fmt.Errorf("unknown enum")
+}
+
+func (e Enum) MarshalText() ([]byte, error) {
+	switch e {
+	case ENUM__ONE:
+		return []byte("ONE"), nil
+	case ENUM__TWO:
+		return []byte("TWO"), nil
+	}
+	return []byte{}, fmt.Errorf("unknown enum")
 }

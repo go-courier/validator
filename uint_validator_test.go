@@ -64,6 +64,10 @@ func TestUintValidator_New(t *testing.T) {
 				BitSize: 53,
 				Maximum: MaxUint(53),
 			}},
+			{"@uint64", &UintValidator{
+				BitSize: 64,
+				Maximum: MaxUint(64),
+			}},
 		},
 	}
 

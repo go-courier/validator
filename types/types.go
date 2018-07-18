@@ -65,7 +65,7 @@ func TryNew(u Type) (reflect.Value, bool) {
 
 var (
 	rtypeEncodingTextMarshaler = FromRType(reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem())
-	ttypeEncodingTextMarshaler = FromTType(NewTypesTypeFromReflectType(reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()).Underlying())
+	ttypeEncodingTextMarshaler = FromTType(TypeByName("encoding", "TextMarshaler").Underlying())
 )
 
 func EncodingTextMarshalerTypeReplacer(u Type) (Type, bool) {
