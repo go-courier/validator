@@ -5,9 +5,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/go-courier/reflectx/typesutil"
 	"github.com/stretchr/testify/require"
-
-	"github.com/go-courier/validator/types"
 )
 
 func TestUintValidator_New(t *testing.T) {
@@ -76,7 +75,7 @@ func TestUintValidator_New(t *testing.T) {
 			c.expect.SetDefaults()
 
 			t.Run(fmt.Sprintf("%s %s|%s", typ, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, types.FromRType(typ)), nil)
+				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, typesutil.FromRType(typ)), nil)
 				require.NoError(t, err)
 				require.Equal(t, c.expect, v)
 			})
@@ -116,7 +115,7 @@ func TestUintValidator_ParseFailed(t *testing.T) {
 
 	for typ := range invalidRules {
 		for _, r := range invalidRules[typ] {
-			rule := MustParseRuleStringWithType(r, types.FromRType(typ))
+			rule := MustParseRuleStringWithType(r, typesutil.FromRType(typ))
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", typ, rule.Bytes()), func(t *testing.T) {
 				_, err := validator.New(rule, ValidatorMgrDefault)

@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/go-courier/reflectx/typesutil"
+
 	"github.com/go-courier/validator/rules"
-	"github.com/go-courier/validator/types"
 )
 
-func MustParseRuleStringWithType(ruleStr string, typ types.Type) *Rule {
+func MustParseRuleStringWithType(ruleStr string, typ typesutil.Type) *Rule {
 	r, err := ParseRuleWithType([]byte(ruleStr), typ)
 	if err != nil {
 		panic(err)
@@ -16,7 +17,7 @@ func MustParseRuleStringWithType(ruleStr string, typ types.Type) *Rule {
 	return r
 }
 
-func ParseRuleWithType(ruleBytes []byte, typ types.Type) (*Rule, error) {
+func ParseRuleWithType(ruleBytes []byte, typ typesutil.Type) (*Rule, error) {
 	r, err := rules.ParseRule(ruleBytes)
 	if err != nil {
 		return nil, err
@@ -28,12 +29,12 @@ func ParseRuleWithType(ruleBytes []byte, typ types.Type) (*Rule, error) {
 }
 
 func (r *Rule) String() string {
-	return types.TypeFullName(r.Type) + string(r.Rule.Bytes())
+	return typesutil.FullTypeName(r.Type) + string(r.Rule.Bytes())
 }
 
 type Rule struct {
 	*rules.Rule
-	Type types.Type
+	Type typesutil.Type
 }
 
 type RuleProcessor func(rule *Rule)
@@ -41,7 +42,7 @@ type RuleProcessor func(rule *Rule)
 // mgr for compiling validator
 type ValidatorMgr interface {
 	// compile rule string to validator
-	Compile([]byte, types.Type, RuleProcessor) (Validator, error)
+	Compile([]byte, typesutil.Type, RuleProcessor) (Validator, error)
 }
 
 var ValidatorMgrDefault = NewValidatorFactory()
@@ -85,7 +86,7 @@ func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
 	}
 }
 
-func (f *ValidatorFactory) MustCompile(rule []byte, typ types.Type, ruleProcessor RuleProcessor) Validator {
+func (f *ValidatorFactory) MustCompile(rule []byte, typ typesutil.Type, ruleProcessor RuleProcessor) Validator {
 	v, err := f.Compile(rule, typ, ruleProcessor)
 	if err != nil {
 		panic(err)
@@ -93,7 +94,7 @@ func (f *ValidatorFactory) MustCompile(rule []byte, typ types.Type, ruleProcesso
 	return v
 }
 
-func (f *ValidatorFactory) Compile(ruleBytes []byte, typ types.Type, ruleProcessor RuleProcessor) (Validator, error) {
+func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, ruleProcessor RuleProcessor) (Validator, error) {
 	if len(ruleBytes) == 0 {
 		return nil, nil
 	}

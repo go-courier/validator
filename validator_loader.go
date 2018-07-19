@@ -6,9 +6,9 @@ import (
 	"reflect"
 
 	"github.com/go-courier/reflectx"
+	"github.com/go-courier/reflectx/typesutil"
 
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/types"
 )
 
 func NewValidatorLoader(validatorCreator ValidatorCreator) *ValidatorLoader {
@@ -34,12 +34,12 @@ const (
 	PreprocessPtr
 )
 
-func normalize(typ types.Type) (types.Type, PreprocessStage) {
-	if t, ok := types.EncodingTextMarshalerTypeReplacer(typ); ok {
+func normalize(typ typesutil.Type) (typesutil.Type, PreprocessStage) {
+	if t, ok := typesutil.EncodingTextMarshalerTypeReplacer(typ); ok {
 		return t, PreprocessString
 	}
 	if typ.Kind() == reflect.Ptr {
-		return types.Deref(typ), PreprocessPtr
+		return typesutil.Deref(typ), PreprocessPtr
 	}
 	return typ, PreprocessSkip
 }
@@ -61,7 +61,7 @@ func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Valida
 	l.Validator = v
 
 	if l.DefaultValue != nil {
-		if rv, ok := types.TryNew(typ); ok {
+		if rv, ok := typesutil.TryNew(typ); ok {
 			if err := reflectx.UnmarshalText(rv, l.DefaultValue); err != nil {
 				return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", l.DefaultValue, typ, err)
 			}

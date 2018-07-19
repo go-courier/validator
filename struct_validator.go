@@ -5,9 +5,9 @@ import (
 	"reflect"
 
 	"github.com/go-courier/reflectx"
+	"github.com/go-courier/reflectx/typesutil"
 
 	"github.com/go-courier/validator/errors"
-	"github.com/go-courier/validator/types"
 )
 
 func NewStructValidator(namedTagKey string) *StructValidator {
@@ -50,13 +50,13 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 	for i := 0; i < rv.NumField(); i++ {
 		field := typ.Field(i)
 		fieldValue := rv.Field(i)
-		fieldName, _, exists := types.FieldDisplayName(field.Tag, validator.namedTagKey, field.Name)
+		fieldName, _, exists := typesutil.FieldDisplayName(field.Tag, validator.namedTagKey, field.Name)
 
 		if !ast.IsExported(field.Name) || fieldName == "-" {
 			continue
 		}
 
-		fieldType := reflectx.IndirectType(field.Type)
+		fieldType := reflectx.Deref(field.Type)
 		isStructType := fieldType.Kind() == reflect.Struct
 
 		if field.Anonymous && isStructType && !exists {
@@ -90,10 +90,10 @@ func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, 
 	structValidator := NewStructValidator(validator.namedTagKey)
 	errSet := errors.NewErrorSet("")
 
-	types.EachField(rule.Type, validator.namedTagKey, func(field types.StructField, fieldDisplayName string, omitempty bool) bool {
+	typesutil.EachField(rule.Type, validator.namedTagKey, func(field typesutil.StructField, fieldDisplayName string, omitempty bool) bool {
 		tagValidateValue := field.Tag().Get(TagValidate)
 
-		if tagValidateValue == "" && types.Deref(field.Type()).Kind() == reflect.Struct {
+		if tagValidateValue == "" && typesutil.Deref(field.Type()).Kind() == reflect.Struct {
 			tagValidateValue = "@struct"
 		}
 
