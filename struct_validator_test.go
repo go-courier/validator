@@ -126,6 +126,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 	type SomeStruct struct {
 		skip         string
 		JustRequired string
+		CanEmpty     *string            `validate:"@string[0,]?"`
 		String       string             `validate:"@string[1,]"`
 		Named        Named              `validate:"@string[2,]"`
 		PtrString    *string            `validate:"@string[3,]" default:"123"`
@@ -144,15 +145,18 @@ func TestNewStructValidator_Validate(t *testing.T) {
 	}, ValidatorMgrDefault)
 	require.NoError(t, err)
 
-	errForValidate := structValidator.Validate(SomeStruct{
+	s := SomeStruct{
 		Slice: []string{"", ""},
 		Map: map[string]string{
 			"1":  "",
 			"11": "",
 			"12": "",
 		},
-	})
+	}
+
+	errForValidate := structValidator.Validate(s)
 
 	require.Equal(t, 20, errForValidate.(*errors.ErrorSet).Len())
 	t.Log(errForValidate)
+	require.Nil(t, s.CanEmpty)
 }

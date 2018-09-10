@@ -67,9 +67,6 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 		}
 
 		if fieldValidator, ok := validator.fieldValidators[field.Name]; ok {
-			if fieldValue.Kind() == reflect.Ptr && fieldValue.IsNil() {
-				fieldValue = reflectx.New(field.Type)
-			}
 			err := fieldValidator.Validate(fieldValue)
 			errSet.AddErr(err, fieldName)
 		}

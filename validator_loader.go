@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/errors"
@@ -94,7 +93,6 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			if err != nil {
 				return err
 			}
-			spew.Dump(loader)
 			if len(data) == 0 && !loader.Optional {
 				return errors.MissingRequiredFieldError{}
 			}
@@ -125,14 +123,15 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			return nil
 		}
 
+		if loader.Validator == nil {
+			return nil
+		}
+
 		if rv.Kind() == reflect.Interface {
 			rv = rv.Elem()
 		}
 		rv = reflectx.Indirect(rv)
 
-		if loader.Validator == nil {
-			return nil
-		}
 		return loader.Validator.Validate(rv)
 	}
 }
