@@ -86,7 +86,13 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			if err != nil {
 				return err
 			}
+			if len(data) == 0 && !loader.Optional {
+				return errors.MissingRequiredFieldError{}
+			}
 			v = string(data)
+		}
+		if loader.Validator == nil {
+			return nil
 		}
 		return loader.Validator.Validate(v)
 	default:
