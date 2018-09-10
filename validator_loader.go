@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/errors"
@@ -43,15 +44,22 @@ func normalize(typ typesutil.Type) (typesutil.Type, PreprocessStage) {
 	return typ, PreprocessSkip
 }
 
+func (loader *ValidatorLoader) String() string {
+	if loader.Validator != nil {
+		return loader.Validator.String()
+	}
+	return "nil"
+}
+
 func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Validator, error) {
 	l := NewValidatorLoader(loader.ValidatorCreator)
+
+	l.Optional = rule.Optional
+	l.DefaultValue = rule.DefaultValue
 
 	typ := rule.Type
 
 	rule.Type, l.PreprocessStage = normalize(rule.Type)
-
-	l.Optional = rule.Optional
-	l.DefaultValue = rule.DefaultValue
 
 	if loader.ValidatorCreator != nil {
 		v, err := loader.ValidatorCreator.New(rule, validateMgr)
@@ -86,6 +94,7 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			if err != nil {
 				return err
 			}
+			spew.Dump(loader)
 			if len(data) == 0 && !loader.Optional {
 				return errors.MissingRequiredFieldError{}
 			}

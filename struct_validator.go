@@ -86,14 +86,22 @@ func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, 
 		return nil, errors.NewUnsupportedTypeError(rule.String(), validator.String())
 	}
 
-	structValidator := NewStructValidator(validator.namedTagKey)
+	namedTagKey := ""
+
+	if len(rule.Params) > 0 {
+		namedTagKey = string(rule.Params[0].Bytes())
+	}
+
+	structValidator := NewStructValidator(namedTagKey)
 	errSet := errors.NewErrorSet("")
 
-	typesutil.EachField(rule.Type, validator.namedTagKey, func(field typesutil.StructField, fieldDisplayName string, omitempty bool) bool {
+	typesutil.EachField(rule.Type, structValidator.namedTagKey, func(field typesutil.StructField, fieldDisplayName string, omitempty bool) bool {
 		tagValidateValue := field.Tag().Get(TagValidate)
 
 		if tagValidateValue == "" && typesutil.Deref(field.Type()).Kind() == reflect.Struct {
-			tagValidateValue = "@struct"
+			if _, ok := typesutil.EncodingTextMarshalerTypeReplacer(field.Type()); !ok {
+				tagValidateValue = structValidator.String()
+			}
 		}
 
 		fieldValidator, err := mgr.Compile([]byte(tagValidateValue), field.Type(), func(rule *Rule) {
@@ -120,5 +128,5 @@ func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, 
 }
 
 func (validator *StructValidator) String() string {
-	return "@" + validator.Names()[0]
+	return "@" + validator.Names()[0] + "<" + validator.namedTagKey + ">"
 }
