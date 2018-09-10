@@ -126,6 +126,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	type SomeStruct struct {
 		skip         string
+		JustRequired string
 		String       string             `validate:"@string[1,]"`
 		Named        Named              `validate:"@string[2,]"`
 		PtrString    *string            `validate:"@string[3,]" default:"123"`
@@ -153,7 +154,6 @@ func TestNewStructValidator_Validate(t *testing.T) {
 		},
 	})
 
-	require.Equal(t, 19, errForValidate.(*errors.ErrorSet).Len())
-
+	require.Equal(t, 20, errForValidate.(*errors.ErrorSet).Len())
 	t.Log(errForValidate)
 }

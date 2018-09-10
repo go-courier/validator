@@ -51,22 +51,24 @@ func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Valida
 
 	rule.Type, l.PreprocessStage = normalize(rule.Type)
 
-	v, err := loader.ValidatorCreator.New(rule, validateMgr)
-	if err != nil {
-		return nil, err
-	}
-
 	l.Optional = rule.Optional
 	l.DefaultValue = rule.DefaultValue
-	l.Validator = v
 
-	if l.DefaultValue != nil {
-		if rv, ok := typesutil.TryNew(typ); ok {
-			if err := reflectx.UnmarshalText(rv, l.DefaultValue); err != nil {
-				return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", l.DefaultValue, typ, err)
-			}
-			if err := l.Validate(rv); err != nil {
-				return nil, fmt.Errorf("default value `%s` is not a valid value of %s: %s", l.DefaultValue, v, err)
+	if loader.ValidatorCreator != nil {
+		v, err := loader.ValidatorCreator.New(rule, validateMgr)
+		if err != nil {
+			return nil, err
+		}
+		l.Validator = v
+
+		if l.DefaultValue != nil {
+			if rv, ok := typesutil.TryNew(typ); ok {
+				if err := reflectx.UnmarshalText(rv, l.DefaultValue); err != nil {
+					return nil, fmt.Errorf("default value `%s` can not unmarshal to %s: %s", l.DefaultValue, typ, err)
+				}
+				if err := l.Validate(rv); err != nil {
+					return nil, fmt.Errorf("default value `%s` is not a valid value of %s: %s", l.DefaultValue, v, err)
+				}
 			}
 		}
 	}
@@ -113,6 +115,10 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			rv = rv.Elem()
 		}
 		rv = reflectx.Indirect(rv)
+
+		if loader.Validator == nil {
+			return nil
+		}
 		return loader.Validator.Validate(rv)
 	}
 }

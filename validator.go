@@ -18,23 +18,29 @@ func MustParseRuleStringWithType(ruleStr string, typ typesutil.Type) *Rule {
 }
 
 func ParseRuleWithType(ruleBytes []byte, typ typesutil.Type) (*Rule, error) {
-	r, err := rules.ParseRule(ruleBytes)
-	if err != nil {
-		return nil, err
+	r := &rules.Rule{}
+
+	if len(ruleBytes) != 0 {
+		parsedRule, err := rules.ParseRule(ruleBytes)
+		if err != nil {
+			return nil, err
+		}
+		r = parsedRule
 	}
+
 	return &Rule{
 		Type: typ,
 		Rule: r,
 	}, nil
 }
 
-func (r *Rule) String() string {
-	return typesutil.FullTypeName(r.Type) + string(r.Rule.Bytes())
-}
-
 type Rule struct {
 	*rules.Rule
 	Type typesutil.Type
+}
+
+func (r *Rule) String() string {
+	return typesutil.FullTypeName(r.Type) + string(r.Rule.Bytes())
 }
 
 type RuleProcessor func(rule *Rule)
@@ -95,10 +101,6 @@ func (f *ValidatorFactory) MustCompile(rule []byte, typ typesutil.Type, ruleProc
 }
 
 func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, ruleProcessor RuleProcessor) (Validator, error) {
-	if len(ruleBytes) == 0 {
-		return nil, nil
-	}
-
 	rule, err := ParseRuleWithType(ruleBytes, typ)
 	if err != nil {
 		return nil, err
@@ -114,13 +116,13 @@ func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, rulePro
 	}
 
 	validatorCreator, ok := f.validatorSet[rule.Name]
-	if !ok {
+	if len(ruleBytes) != 0 && !ok {
 		return nil, fmt.Errorf("%s not match any validator", rule.Name)
 	}
 
-	normalizeValidator := NewValidatorLoader(validatorCreator)
+	validatorLoader := NewValidatorLoader(validatorCreator)
 
-	validator, err := normalizeValidator.New(rule, f)
+	validator, err := validatorLoader.New(rule, f)
 	if err != nil {
 		return nil, err
 	}
