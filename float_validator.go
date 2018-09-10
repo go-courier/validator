@@ -8,7 +8,6 @@ import (
 	"strconv"
 
 	"github.com/go-courier/ptr"
-
 	"github.com/go-courier/validator/errors"
 	"github.com/go-courier/validator/rules"
 )

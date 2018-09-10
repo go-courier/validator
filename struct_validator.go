@@ -6,7 +6,6 @@ import (
 
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
-
 	"github.com/go-courier/validator/errors"
 )
 

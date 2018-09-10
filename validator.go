@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/go-courier/reflectx/typesutil"
-
 	"github.com/go-courier/validator/rules"
 )
 

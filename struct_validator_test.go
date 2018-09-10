@@ -5,9 +5,8 @@ import (
 	"testing"
 
 	"github.com/go-courier/reflectx/typesutil"
-	"github.com/stretchr/testify/require"
-
 	"github.com/go-courier/validator/errors"
+	"github.com/stretchr/testify/require"
 )
 
 type SomeTextMarshaler struct {

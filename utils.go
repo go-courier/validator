@@ -5,7 +5,6 @@ import (
 	"strconv"
 
 	"github.com/go-courier/ptr"
-
 	"github.com/go-courier/validator/rules"
 )
 
