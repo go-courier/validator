@@ -88,7 +88,7 @@ func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, 
 
 	namedTagKey := ""
 
-	if len(rule.Params) > 0 {
+	if rule.Rule != nil && len(rule.Params) > 0 {
 		namedTagKey = string(rule.Params[0].Bytes())
 	}
 
