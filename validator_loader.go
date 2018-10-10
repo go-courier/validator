@@ -85,19 +85,31 @@ func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Valida
 func (loader *ValidatorLoader) Validate(v interface{}) error {
 	switch loader.PreprocessStage {
 	case PreprocessString:
-		if rv, ok := v.(reflect.Value); ok && rv.CanInterface() {
-			v = rv.Interface()
+		rv, ok := v.(reflect.Value)
+		if !ok {
+			rv = reflect.ValueOf(v)
 		}
-		if textMarshaler, ok := v.(encoding.TextMarshaler); ok {
-			data, err := textMarshaler.MarshalText()
-			if err != nil {
-				return err
-			}
-			if len(data) == 0 && !loader.Optional {
+
+		if rv.Kind() == reflect.Ptr && rv.IsNil() {
+			if !loader.Optional {
 				return errors.MissingRequiredFieldError{}
 			}
-			v = string(data)
+		} else {
+			if rv.CanInterface() {
+				v = rv.Interface()
+			}
+			if textMarshaler, ok := v.(encoding.TextMarshaler); ok {
+				data, err := textMarshaler.MarshalText()
+				if err != nil {
+					return err
+				}
+				if len(data) == 0 && !loader.Optional {
+					return errors.MissingRequiredFieldError{}
+				}
+				v = string(data)
+			}
 		}
+
 		if loader.Validator == nil {
 			return nil
 		}
