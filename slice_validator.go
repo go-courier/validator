@@ -56,27 +56,27 @@ func (validator *SliceValidator) ValidateReflectValue(rv reflect.Value) error {
 	if lenOfValue < validator.MinItems {
 		return &errors.OutOfRangeError{
 			Target:  TargetSliceLength,
-			Current: rv.Interface(),
+			Current: lenOfValue,
 			Minimum: validator.MinItems,
 		}
 	}
 	if validator.MaxItems != nil && lenOfValue > *validator.MaxItems {
 		return &errors.OutOfRangeError{
 			Target:  TargetSliceLength,
-			Current: rv.Interface(),
+			Current: lenOfValue,
 			Maximum: validator.MaxItems,
 		}
 	}
 
 	if validator.ElemValidator != nil {
-		errors := errors.NewErrorSet("")
+		errs := errors.NewErrorSet("")
 		for i := 0; i < rv.Len(); i++ {
 			err := validator.ElemValidator.Validate(rv.Index(i).Interface())
 			if err != nil {
-				errors.AddErr(err, i)
+				errs.AddErr(err, i)
 			}
 		}
-		return errors.Err()
+		return errs.Err()
 	}
 	return nil
 }

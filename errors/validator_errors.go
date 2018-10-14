@@ -3,6 +3,8 @@ package errors
 import (
 	"bytes"
 	"fmt"
+	"github.com/go-courier/reflectx"
+	"reflect"
 	"regexp"
 )
 
@@ -79,7 +81,7 @@ func (e *OutOfRangeError) Error() string {
 			buf.WriteString(" or equal")
 		}
 
-		buf.WriteString(fmt.Sprintf(" than %v", e.Minimum))
+		buf.WriteString(fmt.Sprintf(" than %v", reflectx.Indirect(reflect.ValueOf(e.Minimum)).Interface()))
 	}
 
 	if e.Maximum != nil {
@@ -92,7 +94,7 @@ func (e *OutOfRangeError) Error() string {
 			buf.WriteString(" or equal")
 		}
 
-		buf.WriteString(fmt.Sprintf(" than %v", e.Maximum))
+		buf.WriteString(fmt.Sprintf(" than %v", reflectx.Indirect(reflect.ValueOf(e.Maximum)).Interface()))
 	}
 
 	buf.WriteString(fmt.Sprintf(", but got invalid value %v", e.Current))

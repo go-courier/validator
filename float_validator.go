@@ -110,7 +110,7 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 	if m > validator.MaxDigits {
 		return &errors.OutOfRangeError{
 			Target:  TargetTotalDigitsOfFloatValue,
-			Current: val,
+			Current: m,
 			Maximum: validator.MaxDigits,
 		}
 	}
@@ -118,7 +118,7 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 	if d > decimalDigits {
 		return &errors.OutOfRangeError{
 			Target:  TargetDecimalDigitsOfFloatValue,
-			Current: val,
+			Current: d,
 			Maximum: decimalDigits,
 		}
 	}

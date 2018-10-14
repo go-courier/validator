@@ -152,7 +152,7 @@ func (validator *StringValidator) Validate(v interface{}) error {
 	if strLen < validator.MinLength {
 		return &errors.OutOfRangeError{
 			Target:  TargetStringLength,
-			Current: v,
+			Current: strLen,
 			Minimum: validator.MinLength,
 		}
 	}
@@ -160,7 +160,7 @@ func (validator *StringValidator) Validate(v interface{}) error {
 	if validator.MaxLength != nil && strLen > *validator.MaxLength {
 		return &errors.OutOfRangeError{
 			Target:  TargetStringLength,
-			Current: v,
+			Current: strLen,
 			Maximum: validator.MaxLength,
 		}
 	}
