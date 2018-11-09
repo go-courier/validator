@@ -132,6 +132,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 		PtrString    *string            `validate:"@string[3,]" default:"123"`
 		SomeStringer *SomeTextMarshaler `validate:"@string[20,]"`
 		Slice        []string           `validate:"@slice<@string[1,]>"`
+		SliceStruct  []SubStruct        `validate:"@slice"`
 		Map          map[string]string  `validate:"@map<@string[2,],@string[1,]>"`
 		Struct       SubStruct
 		SubStruct
@@ -147,6 +148,9 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	s := SomeStruct{
 		Slice: []string{"", ""},
+		SliceStruct: []SubStruct{
+			{Int: 0},
+		},
 		Map: map[string]string{
 			"1":  "",
 			"11": "",
@@ -156,7 +160,7 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	errForValidate := structValidator.Validate(s)
 
-	require.Equal(t, 20, errForValidate.(*errors.ErrorSet).Len())
+	require.Equal(t, 23, errForValidate.(*errors.ErrorSet).Len())
 	t.Log(errForValidate)
 	require.Nil(t, s.CanEmpty)
 }

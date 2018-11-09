@@ -2,6 +2,7 @@ package validator
 
 import (
 	"fmt"
+	"github.com/go-courier/reflectx/typesutil"
 	"reflect"
 
 	"github.com/go-courier/validator/errors"
@@ -110,6 +111,8 @@ func (SliceValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 		return nil, errors.NewUnsupportedTypeError(rule.String(), sliceValidator.String())
 	}
 
+	elemRule := []byte("")
+
 	if rule.Params != nil {
 		if len(rule.Params) != 1 {
 			return nil, fmt.Errorf("slice should only 1 parameter, but got %d", len(rule.Params))
@@ -118,7 +121,15 @@ func (SliceValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 		if !ok {
 			return nil, fmt.Errorf("slice parameter should be a valid rule")
 		}
-		v, err := mgr.Compile(r.RAW, rule.Type.Elem(), nil)
+		elemRule = r.RAW
+	}
+
+	if len(elemRule) == 0 && typesutil.Deref(rule.Type.Elem()).Kind() == reflect.Struct {
+		elemRule = []byte("@struct")
+	}
+
+	if len(elemRule) != 0 {
+		v, err := mgr.Compile(elemRule, rule.Type.Elem(), nil)
 		if err != nil {
 			return nil, fmt.Errorf("slice elem %s", err)
 		}
