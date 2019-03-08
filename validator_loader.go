@@ -98,6 +98,7 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 			if rv.CanInterface() {
 				v = rv.Interface()
 			}
+
 			if textMarshaler, ok := v.(encoding.TextMarshaler); ok {
 				data, err := textMarshaler.MarshalText()
 				if err != nil {
@@ -106,7 +107,13 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 				if len(data) == 0 && !loader.Optional {
 					return errors.MissingRequiredFieldError{}
 				}
-				v = string(data)
+
+				if loader.DefaultValue != nil {
+					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
+					if err != nil {
+						return fmt.Errorf("unmarshal default value failed")
+					}
+				}
 			}
 		}
 
