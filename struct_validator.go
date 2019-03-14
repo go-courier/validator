@@ -2,12 +2,11 @@ package validator
 
 import (
 	"context"
-	"go/ast"
-	"reflect"
-
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/errors"
+	"go/ast"
+	"reflect"
 )
 
 func NewStructValidator(namedTagKey string) *StructValidator {
@@ -95,6 +94,7 @@ func (validator *StructValidator) validate(rv reflect.Value, errSet *errors.Erro
 const (
 	TagValidate = "validate"
 	TagDefault  = "default"
+	TagErrMsg   = "errMsg"
 )
 
 func (validator *StructValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
@@ -134,6 +134,9 @@ func (validator *StructValidator) New(ctx context.Context, rule *Rule) (Validato
 			}
 			if defaultValue, ok := field.Tag().Lookup(TagDefault); ok {
 				rule.DefaultValue = []byte(defaultValue)
+			}
+			if errMsg, ok := field.Tag().Lookup(TagErrMsg); ok {
+				rule.ErrMsg = []byte(errMsg)
 			}
 		})
 

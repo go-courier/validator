@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"encoding"
+	stderrors "errors"
 	"fmt"
 	"reflect"
 
@@ -24,6 +25,7 @@ type ValidatorLoader struct {
 
 	DefaultValue []byte
 	Optional     bool
+	ErrMsg       []byte
 }
 
 type PreprocessStage int
@@ -56,6 +58,7 @@ func (loader *ValidatorLoader) New(ctx context.Context, rule *Rule) (Validator, 
 
 	l.Optional = rule.Optional
 	l.DefaultValue = rule.DefaultValue
+	l.ErrMsg = rule.ErrMsg
 
 	typ := rule.Type
 
@@ -84,6 +87,17 @@ func (loader *ValidatorLoader) New(ctx context.Context, rule *Rule) (Validator, 
 }
 
 func (loader *ValidatorLoader) Validate(v interface{}) error {
+	err := loader.validate(v)
+	if err == nil {
+		return nil
+	}
+	if loader.ErrMsg != nil && len(loader.ErrMsg) != 0 {
+		return stderrors.New(string(loader.ErrMsg))
+	}
+	return err
+}
+
+func (loader *ValidatorLoader) validate(v interface{}) error {
 	switch loader.PreprocessStage {
 	case PreprocessString:
 		rv, ok := v.(reflect.Value)

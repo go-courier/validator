@@ -37,7 +37,9 @@ func ParseRuleWithType(ruleBytes []byte, typ typesutil.Type) (*Rule, error) {
 
 type Rule struct {
 	*rules.Rule
-	Type typesutil.Type
+
+	ErrMsg []byte
+	Type   typesutil.Type
 }
 
 func (r *Rule) String() string {
@@ -134,7 +136,7 @@ func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ ty
 		ruleProcessor(rule)
 	}
 
-	key := rule.String()
+	key := rule.String() + string(rule.ErrMsg)
 	if v, ok := f.cache.Load(key); ok {
 		if validator, ok := v.(Validator); ok {
 			return validator, nil
