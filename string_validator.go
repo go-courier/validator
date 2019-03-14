@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -167,7 +168,7 @@ func (validator *StringValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (StringValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (StringValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	validator := &StringValidator{}
 
 	if rule.ExclusiveLeft || rule.ExclusiveRight {

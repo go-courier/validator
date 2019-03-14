@@ -1,7 +1,11 @@
 package validator
 
 import (
+	"context"
+	"fmt"
 	"reflect"
+	"sort"
+	"strconv"
 	"testing"
 
 	"github.com/go-courier/reflectx/typesutil"
@@ -46,9 +50,9 @@ func TestStructValidator_New(t *testing.T) {
 
 	ValidatorMgrDefault.ResetCache()
 
-	_, err := validator.New(&Rule{
+	_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
 		Type: typesutil.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
-	}, ValidatorMgrDefault)
+	})
 	require.NoError(t, err)
 
 	validateStrings := make([]string, 0)
@@ -86,9 +90,9 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	validator := NewStructValidator("json")
 
 	ValidatorMgrDefault.ResetCache()
-	_, err := validator.New(&Rule{
+	_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
 		Type: typesutil.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
-	}, ValidatorMgrDefault)
+	})
 	require.Error(t, err)
 	t.Log(err)
 
@@ -101,14 +105,14 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	require.Len(t, validateStrings, 0)
 
 	{
-		_, err := validator.New(&Rule{
+		_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
 			Type: typesutil.FromRType(reflect.TypeOf("")),
-		}, ValidatorMgrDefault)
+		})
 		require.Error(t, err)
 	}
 }
 
-func TestNewStructValidator_Validate(t *testing.T) {
+func ExampleNewStructValidator_Validate() {
 	type Named string
 
 	type SubPtrStruct struct {
@@ -118,22 +122,23 @@ func TestNewStructValidator_Validate(t *testing.T) {
 	}
 
 	type SubStruct struct {
-		Int   int     `validate:"@int[1,]"`
-		Float float32 `validate:"@float[1,]"`
-		Uint  uint    `validate:"@uint[1,]"`
+		Int   int     `json:"int" validate:"@int[1,]"`
+		Float float32 `json:"float" validate:"@float[1,]"`
+		Uint  uint    `json:"uint" validate:"@uint[1,]"`
 	}
 
 	type SomeStruct struct {
 		skip         string
 		JustRequired string
-		CanEmpty     *string            `validate:"@string[0,]?"`
-		String       string             `validate:"@string[1,]"`
-		Named        Named              `validate:"@string[2,]"`
-		PtrString    *string            `validate:"@string[3,]" default:"123"`
-		SomeStringer *SomeTextMarshaler `validate:"@string[20,]"`
-		Slice        []string           `validate:"@slice<@string[1,]>"`
-		SliceStruct  []SubStruct        `validate:"@slice"`
-		Map          map[string]string  `validate:"@map<@string[2,],@string[1,]>"`
+		CanEmpty     *string              `validate:"@string[0,]?"`
+		String       string               `validate:"@string[1,]"`
+		Named        Named                `validate:"@string[2,]"`
+		PtrString    *string              `validate:"@string[3,]" default:"123"`
+		SomeStringer *SomeTextMarshaler   `validate:"@string[20,]"`
+		Slice        []string             `validate:"@slice<@string[1,]>"`
+		SliceStruct  []SubStruct          `validate:"@slice"`
+		Map          map[string]string    `validate:"@map<@string[2,],@string[1,]>"`
+		MapStruct    map[string]SubStruct `validate:"@map<@string[2,],>"`
 		Struct       SubStruct
 		SubStruct
 		*SubPtrStruct
@@ -141,10 +146,14 @@ func TestNewStructValidator_Validate(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	structValidator, err := validator.New(&Rule{
+	ctx := ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault)
+
+	structValidator, err := validator.New(ContextWithValidatorMgr(ctx, ValidatorMgrDefault), &Rule{
 		Type: typesutil.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
-	}, ValidatorMgrDefault)
-	require.NoError(t, err)
+	})
+	if err != nil {
+		return
+	}
 
 	s := SomeStruct{
 		Slice: []string{"", ""},
@@ -156,11 +165,53 @@ func TestNewStructValidator_Validate(t *testing.T) {
 			"11": "",
 			"12": "",
 		},
+		MapStruct: map[string]SubStruct{
+			"222": SubStruct{},
+		},
 	}
 
 	errForValidate := structValidator.Validate(s)
 
-	require.Equal(t, 23, errForValidate.(*errors.ErrorSet).Len())
-	t.Log(errForValidate)
-	require.Nil(t, s.CanEmpty)
+	errSet := map[string]string{}
+	errKeyPaths := make([]string, 0)
+
+	errForValidate.(*errors.ErrorSet).Flatten().Each(func(fieldErr *errors.FieldError) {
+		errSet[fieldErr.Field.String()] = strconv.Quote(fieldErr.Error.Error())
+		errKeyPaths = append(errKeyPaths, fieldErr.Field.String())
+	})
+
+	sort.Strings(errKeyPaths)
+
+	for i := range errKeyPaths {
+		k := errKeyPaths[i]
+		fmt.Println(k, errSet[k])
+	}
+
+	// Output:
+	// JustRequired "missing required field"
+	// Map.1 "missing required field"
+	// Map.1/key "string length should be larger than 2, but got invalid value 1"
+	// Map.11 "missing required field"
+	// Map.12 "missing required field"
+	// MapStruct.222.float "missing required field"
+	// MapStruct.222.int "missing required field"
+	// MapStruct.222.uint "missing required field"
+	// Named "missing required field"
+	// PtrFloat "missing required field"
+	// PtrInt "missing required field"
+	// PtrString "missing required field"
+	// PtrUint "missing required field"
+	// SliceStruct[0].float "missing required field"
+	// SliceStruct[0].int "missing required field"
+	// SliceStruct[0].uint "missing required field"
+	// Slice[0] "missing required field"
+	// Slice[1] "missing required field"
+	// SomeStringer "missing required field"
+	// String "missing required field"
+	// Struct.float "missing required field"
+	// Struct.int "missing required field"
+	// Struct.uint "missing required field"
+	// float "missing required field"
+	// int "missing required field"
+	// uint "missing required field"
 }

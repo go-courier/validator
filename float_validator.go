@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -199,7 +200,7 @@ func round(f float64, n int) float64 {
 	return res
 }
 
-func (FloatValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (FloatValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	validator := &FloatValidator{}
 
 	switch rule.Name {

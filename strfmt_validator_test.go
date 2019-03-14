@@ -40,7 +40,7 @@ func TestStrfmtValidator_Validate(t *testing.T) {
 				f := NewValidatorFactory()
 				f.Register(c.validator)
 
-				validator, _ := f.Compile([]byte("@alpha"), typesutil.FromRType(reflect.TypeOf("")), nil)
+				validator, _ := f.Compile(nil, []byte("@alpha"), typesutil.FromRType(reflect.TypeOf("")), nil)
 				err := validator.Validate(v)
 				require.NoError(t, err)
 			})

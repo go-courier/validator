@@ -90,7 +90,7 @@ func TestNewValidatorLoader(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(fmt.Sprintf("%s %s", c.typ, c.rule), func(t *testing.T) {
-			validator, err := ValidatorMgrDefault.Compile([]byte(c.rule), typesutil.FromRType(c.typ), nil)
+			validator, err := ValidatorMgrDefault.Compile(nil, []byte(c.rule), typesutil.FromRType(c.typ), nil)
 			require.NoError(t, err)
 			if err != nil {
 				return
@@ -134,7 +134,7 @@ func TestNewValidatorLoaderFailed(t *testing.T) {
 	for typ := range invalidRules {
 		for _, r := range invalidRules[typ] {
 			t.Run(fmt.Sprintf("%s validate %s", typ, r), func(t *testing.T) {
-				_, err := ValidatorMgrDefault.Compile([]byte(r), typesutil.FromRType(typ), nil)
+				_, err := ValidatorMgrDefault.Compile(nil, []byte(r), typesutil.FromRType(typ), nil)
 				require.Error(t, err)
 				t.Log(err)
 			})

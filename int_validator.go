@@ -2,6 +2,7 @@ package validator
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -155,7 +156,7 @@ func (validator *IntValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func (IntValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (IntValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	validator := &IntValidator{}
 
 	bitSizeBuf := &bytes.Buffer{}

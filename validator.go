@@ -1,7 +1,9 @@
 package validator
 
 import (
+	"context"
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/go-courier/reflectx/typesutil"
@@ -47,17 +49,27 @@ type RuleProcessor func(rule *Rule)
 // mgr for compiling validator
 type ValidatorMgr interface {
 	// compile rule string to validator
-	Compile([]byte, typesutil.Type, RuleProcessor) (Validator, error)
+	Compile(context.Context, []byte, typesutil.Type, RuleProcessor) (Validator, error)
 }
 
 var ValidatorMgrDefault = NewValidatorFactory()
+
+const contextKeyValidatorMgr = "#####ValidatorMgr#####"
+
+func ContextWithValidatorMgr(c context.Context, validatorMgr ValidatorMgr) context.Context {
+	return context.WithValue(c, contextKeyValidatorMgr, validatorMgr)
+}
+
+func ValidatorMgrFromContext(c context.Context) ValidatorMgr {
+	return c.Value(contextKeyValidatorMgr).(ValidatorMgr)
+}
 
 type ValidatorCreator interface {
 	// name and aliases of validator
 	// we will register validator to validator set by these names
 	Names() []string
 	// create new instance
-	New(*Rule, ValidatorMgr) (Validator, error)
+	New(context.Context, *Rule) (Validator, error)
 }
 
 type Validator interface {
@@ -91,15 +103,28 @@ func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
 	}
 }
 
-func (f *ValidatorFactory) MustCompile(rule []byte, typ typesutil.Type, ruleProcessor RuleProcessor) Validator {
-	v, err := f.Compile(rule, typ, ruleProcessor)
+func (f *ValidatorFactory) MustCompile(ctx context.Context, rule []byte, typ typesutil.Type, ruleProcessor RuleProcessor) Validator {
+	v, err := f.Compile(ctx, rule, typ, ruleProcessor)
 	if err != nil {
 		panic(err)
 	}
 	return v
 }
 
-func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, ruleProcessor RuleProcessor) (Validator, error) {
+func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ typesutil.Type, ruleProcessor RuleProcessor) (Validator, error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	if len(ruleBytes) == 0 {
+		switch typesutil.Deref(typ).Kind() {
+		case reflect.Struct:
+			if _, ok := typesutil.EncodingTextMarshalerTypeReplacer(typ); !ok {
+				ruleBytes = []byte("@struct")
+			}
+		}
+	}
+
 	rule, err := ParseRuleWithType(ruleBytes, typ)
 	if err != nil {
 		return nil, err
@@ -111,7 +136,10 @@ func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, rulePro
 
 	key := rule.String()
 	if v, ok := f.cache.Load(key); ok {
-		return v.(Validator), nil
+		if validator, ok := v.(Validator); ok {
+			return validator, nil
+		}
+		return nil, nil
 	}
 
 	validatorCreator, ok := f.validatorSet[rule.Name]
@@ -121,11 +149,12 @@ func (f *ValidatorFactory) Compile(ruleBytes []byte, typ typesutil.Type, rulePro
 
 	validatorLoader := NewValidatorLoader(validatorCreator)
 
-	validator, err := validatorLoader.New(rule, f)
+	validator, err := validatorLoader.New(ContextWithValidatorMgr(ctx, f), rule)
 	if err != nil {
 		return nil, err
 	}
 
 	f.cache.Store(key, validator)
+
 	return validator, nil
 }

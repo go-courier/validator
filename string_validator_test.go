@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 	"regexp"
@@ -54,7 +55,7 @@ func TestStringValidator_New(t *testing.T) {
 	for typ, cases := range caseSet {
 		for _, c := range cases {
 			t.Run(fmt.Sprintf("%s %s|%s", typ, c.rule, c.expect.String()), func(t *testing.T) {
-				v, err := c.expect.New(MustParseRuleStringWithType(c.rule, typesutil.FromRType(typ)), nil)
+				v, err := c.expect.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), MustParseRuleStringWithType(c.rule, typesutil.FromRType(typ)))
 				require.NoError(t, err)
 				require.Equal(t, c.expect, v)
 			})
@@ -85,7 +86,7 @@ func TestStringValidator_NewFailed(t *testing.T) {
 			rule := MustParseRuleStringWithType(r, typesutil.FromRType(typ))
 
 			t.Run(fmt.Sprintf("validate %s new failed: %s", typ, rule.Bytes()), func(t *testing.T) {
-				_, err := validator.New(rule, ValidatorMgrDefault)
+				_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), rule)
 				require.Error(t, err)
 				t.Log(err)
 			})

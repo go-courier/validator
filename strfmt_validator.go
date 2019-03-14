@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"reflect"
 	"regexp"
 
@@ -42,7 +43,7 @@ func (validator *StrfmtValidator) Names() []string {
 	return validator.names
 }
 
-func (validator StrfmtValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (validator StrfmtValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	return &validator, validator.TypeCheck(rule)
 }
 

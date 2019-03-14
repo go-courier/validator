@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"encoding"
 	"fmt"
 	"reflect"
@@ -50,7 +51,7 @@ func (loader *ValidatorLoader) String() string {
 	return "nil"
 }
 
-func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Validator, error) {
+func (loader *ValidatorLoader) New(ctx context.Context, rule *Rule) (Validator, error) {
 	l := NewValidatorLoader(loader.ValidatorCreator)
 
 	l.Optional = rule.Optional
@@ -61,7 +62,7 @@ func (loader *ValidatorLoader) New(rule *Rule, validateMgr ValidatorMgr) (Valida
 	rule.Type, l.PreprocessStage = normalize(rule.Type)
 
 	if loader.ValidatorCreator != nil {
-		v, err := loader.ValidatorCreator.New(rule, validateMgr)
+		v, err := loader.ValidatorCreator.New(ctx, rule)
 		if err != nil {
 			return nil, err
 		}

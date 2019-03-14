@@ -1,8 +1,8 @@
 package validator
 
 import (
+	"context"
 	"fmt"
-	"github.com/go-courier/reflectx/typesutil"
 	"reflect"
 
 	"github.com/go-courier/validator/errors"
@@ -82,7 +82,7 @@ func (validator *SliceValidator) ValidateReflectValue(rv reflect.Value) error {
 	return nil
 }
 
-func (SliceValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (SliceValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	sliceValidator := &SliceValidator{}
 
 	if rule.ExclusiveLeft || rule.ExclusiveRight {
@@ -124,17 +124,13 @@ func (SliceValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
 		elemRule = r.RAW
 	}
 
-	if len(elemRule) == 0 && typesutil.Deref(rule.Type.Elem()).Kind() == reflect.Struct {
-		elemRule = []byte("@struct")
-	}
+	mgr := ValidatorMgrFromContext(ctx)
 
-	if len(elemRule) != 0 {
-		v, err := mgr.Compile(elemRule, rule.Type.Elem(), nil)
-		if err != nil {
-			return nil, fmt.Errorf("slice elem %s", err)
-		}
-		sliceValidator.ElemValidator = v
+	v, err := mgr.Compile(ctx, elemRule, rule.Type.Elem(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("slice elem %s", err)
 	}
+	sliceValidator.ElemValidator = v
 
 	return sliceValidator, nil
 }

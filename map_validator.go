@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -91,7 +92,7 @@ func (validator *MapValidator) ValidateReflectValue(rv reflect.Value) error {
 	return nil
 }
 
-func (validator *MapValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (validator *MapValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	if rule.Type.Kind() != reflect.Map {
 		return nil, errors.NewUnsupportedTypeError(rule.String(), validator.String())
 	}
@@ -117,27 +118,37 @@ func (validator *MapValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, err
 			return nil, fmt.Errorf("map should only 2 parameter, but got %d", len(rule.Params))
 		}
 
+		mgr := ValidatorMgrFromContext(ctx)
+
 		for i, param := range rule.Params {
 			switch r := param.(type) {
 			case *rules.Rule:
 				switch i {
 				case 0:
-					v, err := mgr.Compile(r.RAW, rule.Type.Key(), nil)
+					v, err := mgr.Compile(ctx, r.RAW, rule.Type.Key(), nil)
 					if err != nil {
 						return nil, fmt.Errorf("map key %s", err)
 					}
 					mapValidator.KeyValidator = v
 				case 1:
-					v, err := mgr.Compile(r.RAW, rule.Type.Elem(), nil)
+					v, err := mgr.Compile(ctx, r.RAW, rule.Type.Elem(), nil)
 					if err != nil {
 						return nil, fmt.Errorf("map elem %s", err)
 					}
 					mapValidator.ElemValidator = v
 				}
 			case *rules.RuleLit:
-				if len(r.Bytes()) > 0 {
+				raw := r.Bytes()
+
+				if len(raw) > 0 {
 					return nil, fmt.Errorf("map parameter should be a valid rule")
 				}
+
+				v, err := mgr.Compile(ctx, raw, rule.Type.Elem(), nil)
+				if err != nil {
+					return nil, fmt.Errorf("map elem %s", err)
+				}
+				mapValidator.ElemValidator = v
 			}
 		}
 	}

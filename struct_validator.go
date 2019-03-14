@@ -1,6 +1,7 @@
 package validator
 
 import (
+	"context"
 	"go/ast"
 	"reflect"
 
@@ -14,6 +15,24 @@ func NewStructValidator(namedTagKey string) *StructValidator {
 		namedTagKey:     namedTagKey,
 		fieldValidators: map[string]Validator{},
 	}
+}
+
+const (
+	contextKeyNamedTagKey = "#####NamedTagKey#####"
+)
+
+func ContextWithNamedTagKey(ctx context.Context, namedTagKey string) context.Context {
+	return context.WithValue(ctx, contextKeyNamedTagKey, namedTagKey)
+}
+
+func NamedKeyFromContext(ctx context.Context) string {
+	v := ctx.Value(contextKeyNamedTagKey)
+	if v != nil {
+		if namedTagKey, ok := v.(string); ok {
+			return namedTagKey
+		}
+	}
+	return ""
 }
 
 type StructValidator struct {
@@ -78,19 +97,27 @@ const (
 	TagDefault  = "default"
 )
 
-func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, error) {
+func (validator *StructValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 	if rule.Type.Kind() != reflect.Struct {
 		return nil, errors.NewUnsupportedTypeError(rule.String(), validator.String())
 	}
 
-	namedTagKey := ""
+	namedTagKey := NamedKeyFromContext(ctx)
 
 	if rule.Rule != nil && len(rule.Params) > 0 {
 		namedTagKey = string(rule.Params[0].Bytes())
 	}
 
+	if namedTagKey == "" {
+		namedTagKey = validator.namedTagKey
+	}
+
 	structValidator := NewStructValidator(namedTagKey)
 	errSet := errors.NewErrorSet("")
+
+	ctx = ContextWithNamedTagKey(ctx, structValidator.namedTagKey)
+
+	mgr := ValidatorMgrFromContext(ctx)
 
 	typesutil.EachField(rule.Type, structValidator.namedTagKey, func(field typesutil.StructField, fieldDisplayName string, omitempty bool) bool {
 		tagValidateValue := field.Tag().Get(TagValidate)
@@ -101,7 +128,7 @@ func (validator *StructValidator) New(rule *Rule, mgr ValidatorMgr) (Validator, 
 			}
 		}
 
-		fieldValidator, err := mgr.Compile([]byte(tagValidateValue), field.Type(), func(rule *Rule) {
+		fieldValidator, err := mgr.Compile(ContextWithNamedTagKey(ctx, namedTagKey), []byte(tagValidateValue), field.Type(), func(rule *Rule) {
 			if omitempty {
 				rule.Optional = omitempty
 			}
