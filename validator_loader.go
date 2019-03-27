@@ -128,7 +128,6 @@ func (loader *ValidatorLoader) validate(v interface{}) error {
 					if err != nil {
 						return fmt.Errorf("unmarshal default value failed")
 					}
-					loader.DefaultValue = data
 				}
 				// str value for validate
 				v = string(data)
