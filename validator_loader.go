@@ -123,7 +123,7 @@ func (loader *ValidatorLoader) validate(v interface{}) error {
 					return errors.MissingRequiredFieldError{}
 				}
 
-				if loader.DefaultValue != nil {
+				if loader.DefaultValue != nil && reflectx.IsEmptyValue(rv) {
 					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
 					if err != nil {
 						return fmt.Errorf("unmarshal default value failed")
