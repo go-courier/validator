@@ -123,7 +123,7 @@ func (loader *ValidatorLoader) validate(v interface{}) error {
 					return errors.MissingRequiredFieldError{}
 				}
 
-				if loader.DefaultValue != nil && reflectx.IsEmptyValue(rv) {
+				if loader.DefaultValue != nil && reflectx.IsEmptyValue(rv) && rv.CanSet() {
 					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
 					if err != nil {
 						return fmt.Errorf("unmarshal default value failed")
@@ -151,9 +151,11 @@ func (loader *ValidatorLoader) validate(v interface{}) error {
 			}
 
 			if loader.DefaultValue != nil {
-				err := reflectx.UnmarshalText(rv, loader.DefaultValue)
-				if err != nil {
-					return fmt.Errorf("unmarshal default value failed")
+				if rv.CanSet() {
+					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
+					if err != nil {
+						return fmt.Errorf("unmarshal default value failed")
+					}
 				}
 			}
 			return nil
@@ -167,7 +169,6 @@ func (loader *ValidatorLoader) validate(v interface{}) error {
 			rv = rv.Elem()
 		}
 		rv = reflectx.Indirect(rv)
-
 		return loader.Validator.Validate(rv)
 	}
 }
