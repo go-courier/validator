@@ -119,10 +119,14 @@ func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ ty
 	}
 
 	if len(ruleBytes) == 0 {
-		switch typesutil.Deref(typ).Kind() {
-		case reflect.Struct:
-			if _, ok := typesutil.EncodingTextMarshalerTypeReplacer(typ); !ok {
+		if _, ok := typesutil.EncodingTextMarshalerTypeReplacer(typ); !ok {
+			switch typesutil.Deref(typ).Kind() {
+			case reflect.Struct:
 				ruleBytes = []byte("@struct")
+			case reflect.Slice:
+				ruleBytes = []byte("@slice")
+			case reflect.Map:
+				ruleBytes = []byte("@map")
 			}
 		}
 	}
