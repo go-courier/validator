@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sync"
 
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/rules"
@@ -89,11 +88,6 @@ func NewValidatorFactory() *ValidatorFactory {
 
 type ValidatorFactory struct {
 	validatorSet map[string]ValidatorCreator
-	cache        sync.Map
-}
-
-func (f *ValidatorFactory) ResetCache() {
-	f.cache = sync.Map{}
 }
 
 func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
@@ -140,27 +134,10 @@ func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ ty
 		ruleProcessor(rule)
 	}
 
-	key := rule.String() + string(rule.ErrMsg)
-	if v, ok := f.cache.Load(key); ok {
-		if validator, ok := v.(Validator); ok {
-			return validator, nil
-		}
-		return nil, nil
-	}
-
 	validatorCreator, ok := f.validatorSet[rule.Name]
 	if len(ruleBytes) != 0 && !ok {
 		return nil, fmt.Errorf("%s not match any validator", rule.Name)
 	}
 
-	validatorLoader := NewValidatorLoader(validatorCreator)
-
-	validator, err := validatorLoader.New(ContextWithValidatorMgr(ctx, f), rule)
-	if err != nil {
-		return nil, err
-	}
-
-	f.cache.Store(key, validator)
-
-	return validator, nil
+	return NewValidatorLoader(validatorCreator).New(ContextWithValidatorMgr(ctx, f), rule)
 }

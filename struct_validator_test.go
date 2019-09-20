@@ -48,21 +48,10 @@ func TestStructValidator_New(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	ValidatorMgrDefault.ResetCache()
-
 	_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
 		Type: typesutil.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
 	})
 	require.NoError(t, err)
-
-	validateStrings := make([]string, 0)
-
-	ValidatorMgrDefault.cache.Range(func(key, value interface{}) bool {
-		validateStrings = append(validateStrings, key.(string))
-		return true
-	})
-
-	require.Len(t, validateStrings, 11)
 }
 
 func TestStructValidator_NewFailed(t *testing.T) {
@@ -89,20 +78,11 @@ func TestStructValidator_NewFailed(t *testing.T) {
 
 	validator := NewStructValidator("json")
 
-	ValidatorMgrDefault.ResetCache()
 	_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
 		Type: typesutil.FromRType(reflect.TypeOf(&SomeStruct{}).Elem()),
 	})
 	require.Error(t, err)
 	t.Log(err)
-
-	validateStrings := make([]string, 0)
-
-	ValidatorMgrDefault.cache.Range(func(key, value interface{}) bool {
-		validateStrings = append(validateStrings, key.(string))
-		return true
-	})
-	require.Len(t, validateStrings, 0)
 
 	{
 		_, err := validator.New(ContextWithValidatorMgr(context.Background(), ValidatorMgrDefault), &Rule{
