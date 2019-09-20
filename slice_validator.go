@@ -72,7 +72,7 @@ func (validator *SliceValidator) ValidateReflectValue(rv reflect.Value) error {
 	if validator.ElemValidator != nil {
 		errs := errors.NewErrorSet("")
 		for i := 0; i < rv.Len(); i++ {
-			err := validator.ElemValidator.Validate(rv.Index(i).Interface())
+			err := validator.ElemValidator.Validate(rv.Index(i))
 			if err != nil {
 				errs.AddErr(err, i)
 			}
