@@ -98,77 +98,48 @@ func (loader *ValidatorLoader) Validate(v interface{}) error {
 }
 
 func (loader *ValidatorLoader) validate(v interface{}) error {
-	switch loader.PreprocessStage {
-	case PreprocessString:
-		rv, ok := v.(reflect.Value)
-		if !ok {
-			rv = reflect.ValueOf(v)
-		}
-
-		if rv.Kind() == reflect.Ptr && rv.IsNil() {
-			if !loader.Optional {
-				return errors.MissingRequiredFieldError{}
-			}
-		} else {
-			if rv.CanInterface() {
-				v = rv.Interface()
-			}
-
-			if textMarshaler, ok := v.(encoding.TextMarshaler); ok {
-				data, err := textMarshaler.MarshalText()
-				if err != nil {
-					return err
-				}
-				if len(data) == 0 && !loader.Optional {
-					return errors.MissingRequiredFieldError{}
-				}
-
-				if loader.DefaultValue != nil && reflectx.IsEmptyValue(rv) && rv.CanSet() {
-					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
-					if err != nil {
-						return fmt.Errorf("unmarshal default value failed")
-					}
-				}
-				// str value for validate
-				v = string(data)
-			}
-		}
-
-		if loader.Validator == nil {
-			return nil
-		}
-		return loader.Validator.Validate(v)
-	default:
-		rv, ok := v.(reflect.Value)
-		if !ok {
-			rv = reflect.ValueOf(v)
-		}
-
-		isEmptyValue := reflectx.IsEmptyValue(rv)
-		if isEmptyValue {
-			if !loader.Optional {
-				return errors.MissingRequiredFieldError{}
-			}
-
-			if loader.DefaultValue != nil {
-				if rv.CanSet() {
-					err := reflectx.UnmarshalText(rv, loader.DefaultValue)
-					if err != nil {
-						return fmt.Errorf("unmarshal default value failed")
-					}
-				}
-			}
-			return nil
-		}
-
-		if loader.Validator == nil {
-			return nil
-		}
-
-		if rv.Kind() == reflect.Interface {
-			rv = rv.Elem()
-		}
-		rv = reflectx.Indirect(rv)
-		return loader.Validator.Validate(rv)
+	rv, ok := v.(reflect.Value)
+	if !ok {
+		rv = reflect.ValueOf(v)
 	}
+
+	if reflectx.IsEmptyValue(rv) {
+		if !loader.Optional {
+			return errors.MissingRequiredFieldError{}
+		}
+
+		if loader.DefaultValue != nil && rv.CanSet() {
+			err := reflectx.UnmarshalText(rv, loader.DefaultValue)
+			if err != nil {
+				return fmt.Errorf("unmarshal default value failed")
+			}
+		}
+		// empty value should not to validate
+		return nil
+	}
+
+	if loader.Validator == nil {
+		return nil
+	}
+
+	if loader.PreprocessStage == PreprocessString {
+		// make sure value over reflect.Value
+		if rv.CanInterface() {
+			v = rv.Interface()
+		}
+
+		if textMarshaller, ok := v.(encoding.TextMarshaler); ok {
+			data, err := textMarshaller.MarshalText()
+			if err != nil {
+				return err
+			}
+			return loader.Validator.Validate(string(data))
+		}
+	}
+
+	if rv.Kind() == reflect.Interface {
+		rv = rv.Elem()
+	}
+
+	return loader.Validator.Validate(reflectx.Indirect(rv))
 }

@@ -129,7 +129,7 @@ func (validator *StringValidator) Validate(v interface{}) error {
 			}
 
 			return &errors.NotInEnumError{
-				Target:  TargetStringLength,
+				Target:  "string value",
 				Current: v,
 				Enums:   values,
 			}
