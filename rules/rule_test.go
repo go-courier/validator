@@ -3,6 +3,7 @@ package rules
 import (
 	"testing"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/stretchr/testify/require"
 )
 
@@ -32,6 +33,9 @@ func TestParseRule(t *testing.T) {
 		{`@string{A, B,    C}`, `@string{A,B,C}`},
 		{`@string{, B,    C}`, `@string{,B,C}`},
 		{`@uint{%2}`, `@uint{%2}`},
+
+		// with value matrix
+		{`@string{A, B,    C}{a,b}`, `@string{A,B,C}{a,b}`},
 
 		// with not required mark or default value
 		{`@string?`, `@string?`},
@@ -87,4 +91,10 @@ func TestParseRuleFailed(t *testing.T) {
 		_, err := ParseRuleString(c)
 		t.Logf("%s %s", c, err)
 	}
+}
+
+func TestRule(t *testing.T) {
+	r, _ := ParseRuleString("@string{A,B,C}{a,b}{1,2}")
+
+	spew.Dump(r.ComputedValues())
 }

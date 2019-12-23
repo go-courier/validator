@@ -110,7 +110,7 @@ LOOP:
 			if err != nil {
 				return nil, err
 			}
-			rule.Values = values
+			rule.ValueMatrix = append(rule.ValueMatrix, values)
 		case '/':
 			pattern, err := s.pattern()
 			if err != nil {

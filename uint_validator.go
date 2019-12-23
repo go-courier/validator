@@ -196,9 +196,11 @@ func (UintValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 
 	validator.SetDefaults()
 
-	if rule.Values != nil {
-		if len(rule.Values) == 1 {
-			mayBeMultipleOf := rule.Values[0].Bytes()
+	ruleValues := rule.ComputedValues()
+
+	if ruleValues != nil {
+		if len(ruleValues) == 1 {
+			mayBeMultipleOf := ruleValues[0].Bytes()
 			if mayBeMultipleOf[0] == '%' {
 				v := mayBeMultipleOf[1:]
 				multipleOf, err := strconv.ParseUint(string(v), 10, int(validator.BitSize))
@@ -211,7 +213,7 @@ func (UintValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 
 		if validator.MultipleOf == 0 {
 			validator.Enums = map[uint64]string{}
-			for _, v := range rule.Values {
+			for _, v := range ruleValues {
 				str := string(v.Bytes())
 				enumValue, err := strconv.ParseUint(str, 10, int(validator.BitSize))
 				if err != nil {
@@ -264,13 +266,15 @@ func (validator *UintValidator) String() string {
 	rule.ExclusiveRight = validator.ExclusiveMaximum
 
 	if validator.MultipleOf != 0 {
-		rule.Values = []*rules.RuleLit{
+		rule.ValueMatrix = [][]*rules.RuleLit{{
 			rules.NewRuleLit([]byte("%" + fmt.Sprintf("%d", validator.MultipleOf))),
-		}
+		}}
 	} else if validator.Enums != nil {
-		for _, str := range validator.Enums {
-			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(str)))
+		ruleValues := make([]*rules.RuleLit, 0)
+		for _, e := range validator.Enums {
+			ruleValues = append(ruleValues, rules.NewRuleLit([]byte(e)))
 		}
+		rule.ValueMatrix = [][]*rules.RuleLit{ruleValues}
 	}
 
 	return string(rule.Bytes())

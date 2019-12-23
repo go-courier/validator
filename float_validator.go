@@ -260,9 +260,11 @@ func (FloatValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 		validator.ExclusiveMaximum = rule.ExclusiveRight
 	}
 
-	if rule.Values != nil {
-		if len(rule.Values) == 1 {
-			mayBeMultipleOf := rule.Values[0].Bytes()
+	ruleValues := rule.ComputedValues()
+
+	if ruleValues != nil {
+		if len(ruleValues) == 1 {
+			mayBeMultipleOf := ruleValues[0].Bytes()
 			if mayBeMultipleOf[0] == '%' {
 				v := mayBeMultipleOf[1:]
 				multipleOf, err := parseFloat(v, validator.MaxDigits, validator.DecimalDigits)
@@ -275,7 +277,7 @@ func (FloatValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 
 		if validator.MultipleOf == 0 {
 			validator.Enums = map[float64]string{}
-			for _, v := range rule.Values {
+			for _, v := range ruleValues {
 				b := v.Bytes()
 				enumValue, err := parseFloat(b, validator.MaxDigits, validator.DecimalDigits)
 				if err != nil {
@@ -410,13 +412,15 @@ func (validator *FloatValidator) String() string {
 	}
 
 	if validator.MultipleOf != 0 {
-		rule.Values = []*rules.RuleLit{
-			rules.NewRuleLit([]byte("%" + fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", validator.MultipleOf))),
+		rule.ValueMatrix = [][]*rules.RuleLit{
+			{rules.NewRuleLit([]byte("%" + fmt.Sprintf("%."+strconv.Itoa(int(decimalDigits))+"f", validator.MultipleOf)))},
 		}
 	} else if validator.Enums != nil {
+		ruleValues := make([]*rules.RuleLit, 0)
 		for _, str := range validator.Enums {
-			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(str)))
+			ruleValues = append(ruleValues, rules.NewRuleLit([]byte(str)))
 		}
+		rule.ValueMatrix = [][]*rules.RuleLit{ruleValues}
 	}
 
 	return string(rule.Bytes())

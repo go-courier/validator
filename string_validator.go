@@ -193,9 +193,11 @@ func (StringValidator) New(ctx context.Context, rule *Rule) (Validator, error) {
 		return validator, validator.TypeCheck(rule)
 	}
 
-	if rule.Values != nil {
+	ruleValues := rule.ComputedValues()
+
+	if ruleValues != nil {
 		validator.Enums = map[string]string{}
-		for _, v := range rule.Values {
+		for _, v := range ruleValues {
 			str := string(v.Bytes())
 			validator.Enums[str] = str
 		}
@@ -224,9 +226,11 @@ func (validator *StringValidator) String() string {
 	rule := rules.NewRule(validator.Names()[0])
 
 	if validator.Enums != nil {
-		for e := range validator.Enums {
-			rule.Values = append(rule.Values, rules.NewRuleLit([]byte(e)))
+		ruleValues := make([]*rules.RuleLit, 0)
+		for _, e := range validator.Enums {
+			ruleValues = append(ruleValues, rules.NewRuleLit([]byte(e)))
 		}
+		rule.ValueMatrix = [][]*rules.RuleLit{ruleValues}
 	}
 
 	rule.Params = []rules.RuleNode{

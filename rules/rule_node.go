@@ -26,7 +26,7 @@ type Rule struct {
 	ExclusiveLeft  bool
 	ExclusiveRight bool
 
-	Values []*RuleLit
+	ValueMatrix [][]*RuleLit
 
 	Pattern *regexp.Regexp
 
@@ -34,6 +34,35 @@ type Rule struct {
 	DefaultValue []byte
 
 	RuleNode
+}
+
+func (r *Rule) ComputedValues() []*RuleLit {
+	return computedValueMatrix(r.ValueMatrix)
+}
+
+func computedValueMatrix(valueMatrix [][]*RuleLit) []*RuleLit {
+	switch len(valueMatrix) {
+	case 0:
+		return nil
+	case 1:
+		return valueMatrix[0]
+	default:
+		rowI := valueMatrix[0]
+		rowJ := valueMatrix[1]
+
+		nI := len(rowI)
+		nJ := len(rowJ)
+
+		values := make([]*RuleLit, nI*nJ)
+
+		for i := range rowI {
+			for j := range rowJ {
+				values[i*nJ+j] = NewRuleLit(append(append([]byte{}, rowI[i].Bytes()...), rowJ[j].Bytes()...))
+			}
+		}
+
+		return computedValueMatrix(append([][]*RuleLit{values}, valueMatrix[2:]...))
+	}
 }
 
 func (r *Rule) Bytes() []byte {
@@ -77,14 +106,18 @@ func (r *Rule) Bytes() []byte {
 		}
 	}
 
-	if len(r.Values) > 0 {
+	for i := range r.ValueMatrix {
+		values := r.ValueMatrix[i]
+
 		buf.WriteByte('{')
-		for i, p := range r.Values {
+
+		for i, p := range values {
 			if i > 0 {
 				buf.WriteByte(',')
 			}
 			buf.Write(p.Bytes())
 		}
+
 		buf.WriteByte('}')
 	}
 
