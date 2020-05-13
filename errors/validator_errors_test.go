@@ -5,7 +5,7 @@ import (
 	"regexp"
 )
 
-func ExampleMissingRequiredError() {
+func ExampleMissingRequiredFieldError() {
 	fmt.Println(MissingRequiredFieldError{})
 	// Output:
 	// missing required field

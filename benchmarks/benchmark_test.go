@@ -20,6 +20,7 @@ func (v *SomeString) PtrRecv() {
 }
 
 type SomeStruct struct {
+	// nolint: unused
 	a, b, c, d, e, f, g, h, i, j, k, l, m, n string
 }
 
@@ -157,25 +158,19 @@ func BenchmarkImplementsOrTypeAssign(b *testing.B) {
 		typ := rv.Type()
 
 		for i := 0; i < b.N; i++ {
-			if ok := typ.Implements(textMarshalerType); ok {
-
-			}
+			_ = typ.Implements(textMarshalerType)
 		}
 	})
 
 	b.Run("interface and type assert", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			if _, ok := rv.Interface().(encoding.TextMarshaler); ok {
-
-			}
+			_ = rv.Interface().(encoding.TextMarshaler)
 		}
 	})
 
 	b.Run("type assert", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
-			if _, ok := (interface{})(val).(encoding.TextMarshaler); ok {
-
-			}
+			_ = (interface{})(val).(encoding.TextMarshaler)
 		}
 	})
 }

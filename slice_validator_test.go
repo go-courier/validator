@@ -18,18 +18,18 @@ func TestSliceValidator_New(t *testing.T) {
 	}{
 		reflect.TypeOf([]string{}): {
 			{"@slice[1,1000]", &SliceValidator{
-				MinItems: 1,
-				MaxItems: ptr.Uint64(1000),
-				ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte(""), typesutil.FromRType(reflect.TypeOf("")), nil),
+				MinItems:      1,
+				MaxItems:      ptr.Uint64(1000),
+				ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte(""), typesutil.FromRType(reflect.TypeOf("")), nil),
 			}},
 			{"@slice<@string[1,2]>[1,]", &SliceValidator{
 				MinItems:      1,
-				ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@string[1,2]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[1,2]"), typesutil.FromRType(reflect.TypeOf("")), nil),
 			}},
 			{"@slice[1]", &SliceValidator{
-				MinItems: 1,
-				MaxItems: ptr.Uint64(1),
-				ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte(""), typesutil.FromRType(reflect.TypeOf("")), nil),
+				MinItems:      1,
+				MaxItems:      ptr.Uint64(1),
+				ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte(""), typesutil.FromRType(reflect.TypeOf("")), nil),
 			}},
 		},
 	}
@@ -102,7 +102,7 @@ func TestSliceValidator_Validate(t *testing.T) {
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@string[0,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[0,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
 		}, "elem validate"},
 	}
 
@@ -137,7 +137,7 @@ func TestSliceValidator_ValidateFailed(t *testing.T) {
 		}, &SliceValidator{
 			MinItems:      2,
 			MaxItems:      ptr.Uint64(4),
-			ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
 		}, "elem validate failed"},
 	}
 

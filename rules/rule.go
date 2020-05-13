@@ -52,7 +52,7 @@ func (s *ruleScanner) rootRule() (*Rule, error) {
 
 var keychars = func() map[rune]bool {
 	m := map[rune]bool{}
-	for _, r := range []rune("@?=[](){}/<>,:") {
+	for _, r := range "@?=[](){}/<>,:" {
 		m[r] = true
 	}
 	return m
@@ -118,7 +118,7 @@ LOOP:
 			}
 			rule.Pattern = pattern
 		case ' ':
-			tok = s.Next()
+			s.Next()
 		default:
 			break LOOP
 		}
@@ -143,9 +143,9 @@ func (s *ruleScanner) params() ([]RuleNode, error) {
 		}
 		switch tok {
 		case ' ':
-			tok = s.Next()
+			s.Next()
 		case ',':
-			tok = s.Next()
+			s.Next()
 			paramCount++
 		case '@':
 			rule, err := s.rule()
@@ -195,9 +195,9 @@ func (s *ruleScanner) ranges() ([]*RuleLit, rune, error) {
 		}
 		switch tok {
 		case ' ':
-			tok = s.Next()
+			s.Next()
 		case ',':
-			tok = s.Next()
+			s.Next()
 			litCount++
 		default:
 			lit, err := s.scanLit()
@@ -239,9 +239,9 @@ func (s *ruleScanner) values() ([]*RuleLit, error) {
 		}
 		switch tok {
 		case ' ':
-			tok = s.Next()
+			s.Next()
 		case ',':
-			tok = s.Next()
+			s.Next()
 			valueCount++
 		default:
 			lit, err := s.scanLit()
@@ -291,7 +291,7 @@ func (s *ruleScanner) pattern() (*regexp.Regexp, error) {
 			continue
 		}
 		b.WriteRune(tok)
-		tok = s.Next()
+		s.Next()
 	}
 	s.Next()
 
@@ -327,7 +327,7 @@ func (s *ruleScanner) optionalAndDefaultValue() (bool, []byte, error) {
 				continue
 			}
 			b.WriteRune(tok)
-			tok = s.Next()
+			s.Next()
 		}
 		s.Next()
 	} else if tok != scanner.EOF {

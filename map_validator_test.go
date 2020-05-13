@@ -25,12 +25,12 @@ func TestMapValidator_New(t *testing.T) {
 		reflect.TypeOf(map[string]map[string]string{}): {
 			{"@map<,@map[1,2]>[1,]", &MapValidator{
 				MinProperties: 1,
-				ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@map[1,2]"), typesutil.FromRType(reflect.TypeOf(map[string]string{})), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@map[1,2]"), typesutil.FromRType(reflect.TypeOf(map[string]string{})), nil),
 			}},
 			{"@map<@string[0,],@map[1,2]>[1,]", &MapValidator{
 				MinProperties: 1,
-				KeyValidator:  ValidatorMgrDefault.MustCompile(nil, []byte("@string[0,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
-				ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@map[1,2]"), typesutil.FromRType(reflect.TypeOf(map[string]string{})), nil),
+				KeyValidator:  ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[0,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+				ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@map[1,2]"), typesutil.FromRType(reflect.TypeOf(map[string]string{})), nil),
 			}},
 		},
 	}
@@ -101,8 +101,8 @@ func TestMapValidator_Validate(t *testing.T) {
 		}, &MapValidator{
 			MinProperties: 2,
 			MaxProperties: ptr.Uint64(4),
-			KeyValidator:  ValidatorMgrDefault.MustCompile(nil, []byte("@string[1,]"), typesutil.FromRType(reflect.TypeOf("1")), nil),
-			ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@string[1,]?"), typesutil.FromRType(reflect.TypeOf("1")), nil),
+			KeyValidator:  ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[1,]"), typesutil.FromRType(reflect.TypeOf("1")), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[1,]?"), typesutil.FromRType(reflect.TypeOf("1")), nil),
 		}, "key value validate"},
 	}
 
@@ -135,8 +135,8 @@ func TestMapValidator_ValidateFailed(t *testing.T) {
 		}, &MapValidator{
 			MinProperties: 2,
 			MaxProperties: ptr.Uint64(4),
-			KeyValidator:  ValidatorMgrDefault.MustCompile(nil, []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
-			ElemValidator: ValidatorMgrDefault.MustCompile(nil, []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+			KeyValidator:  ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
+			ElemValidator: ValidatorMgrDefault.MustCompile(context.Background(), []byte("@string[2,]"), typesutil.FromRType(reflect.TypeOf("")), nil),
 		}, "key elem validate failed"},
 	}
 

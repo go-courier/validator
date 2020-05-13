@@ -36,7 +36,6 @@ func TestStructValidator_New(t *testing.T) {
 	}
 
 	type SomeStruct struct {
-		skip         string
 		String       string             `json:"String" validate:"@string[1,]"`
 		Named        Named              `json:"Named,omitempty" validate:"@string[2,]"`
 		PtrString    *string            `json:",omitempty" validate:"@string[3,]"`
@@ -68,7 +67,6 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	}
 
 	type SomeStruct struct {
-		skip   string
 		String string   `validate:"@string[1,"`
 		Named  Named    `validate:"@int"`
 		Slice  []string `validate:"@slice<@int>"`
@@ -92,7 +90,7 @@ func TestStructValidator_NewFailed(t *testing.T) {
 	}
 }
 
-func ExampleNewStructValidator_Validate() {
+func ExampleNewStructValidator() {
 	type Named string
 
 	type SubPtrStruct struct {
@@ -108,7 +106,6 @@ func ExampleNewStructValidator_Validate() {
 	}
 
 	type SomeStruct struct {
-		skip         string
 		JustRequired string
 		CanEmpty     *string              `validate:"@string[0,]?"`
 		String       string               `validate:"@string[1,]"`
