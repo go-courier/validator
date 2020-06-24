@@ -5,6 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
+# [1.5.3](https://github.com/go-courier/validator/compare/v1.5.2...v1.5.3)
+
+### Bug Fixes
+
+* **fix** float precision issue for formatting ([3cbb7c6](https://github.com/go-courier/validator/commit/3cbb7c6519e32d11e6946d4a9ee0db08daa39229))
+
+
+
 # [1.5.2](https://github.com/go-courier/validator/compare/v1.5.1...v1.5.2)
 
 ### Bug Fixes
