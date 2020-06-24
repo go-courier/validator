@@ -107,7 +107,7 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 
 	decimalDigits := *validator.DecimalDigits
 
-	m, d := lengthOfDigits([]byte(fmt.Sprintf("%.15f", val)))
+	m, d := lengthOfDigits([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
 	if m > validator.MaxDigits {
 		return &errors.OutOfRangeError{
 			Target:  TargetTotalDigitsOfFloatValue,
