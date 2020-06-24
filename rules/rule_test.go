@@ -59,6 +59,7 @@ func TestParseRule(t *testing.T) {
 		{`@map<,@string[1,]>`, `@map<,@string[1,]>`},
 		{`@map<@string,>[1,2]`, `@map<@string,>[1,2]`},
 		{`@map<@string = 's',>[1,2]`, `@map<@string = 's',>[1,2]`},
+		{`@slice<@float64<10,4>[-1.000,100.000]?>`, `@slice<@float64<10,4>[-1.000,100.000]?>`},
 	}
 
 	for i := range cases {
@@ -95,6 +96,5 @@ func TestParseRuleFailed(t *testing.T) {
 
 func TestRule(t *testing.T) {
 	r, _ := ParseRuleString("@string{A,B,C}{a,b}{1,2}")
-
 	spew.Dump(r.ComputedValues())
 }

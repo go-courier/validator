@@ -2,11 +2,12 @@ package validator
 
 import (
 	"context"
+	"go/ast"
+	"reflect"
+
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/errors"
-	"go/ast"
-	"reflect"
 )
 
 func NewStructValidator(namedTagKey string) *StructValidator {
@@ -16,16 +17,14 @@ func NewStructValidator(namedTagKey string) *StructValidator {
 	}
 }
 
-const (
-	contextKeyNamedTagKey = "#####NamedTagKey#####"
-)
+type contextKeyNamedTagKey int
 
 func ContextWithNamedTagKey(ctx context.Context, namedTagKey string) context.Context {
-	return context.WithValue(ctx, contextKeyNamedTagKey, namedTagKey)
+	return context.WithValue(ctx, contextKeyNamedTagKey(1), namedTagKey)
 }
 
 func NamedKeyFromContext(ctx context.Context) string {
-	v := ctx.Value(contextKeyNamedTagKey)
+	v := ctx.Value(contextKeyNamedTagKey(1))
 	if v != nil {
 		if namedTagKey, ok := v.(string); ok {
 			return namedTagKey

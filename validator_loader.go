@@ -10,6 +10,7 @@ import (
 	"github.com/go-courier/reflectx"
 	"github.com/go-courier/reflectx/typesutil"
 	"github.com/go-courier/validator/errors"
+	"github.com/go-courier/validator/rules"
 )
 
 func NewValidatorLoader(validatorCreator ValidatorCreator) *ValidatorLoader {
@@ -48,7 +49,16 @@ func normalize(typ typesutil.Type) (typesutil.Type, PreprocessStage) {
 
 func (loader *ValidatorLoader) String() string {
 	if loader.Validator != nil {
-		return loader.Validator.String()
+		v := loader.Validator.String()
+
+		if loader.Optional {
+			if loader.DefaultValue != nil {
+				return v + " = " + string(rules.SingleQuote(loader.DefaultValue))
+			}
+			return v + "?"
+		}
+
+		return v
 	}
 	return "nil"
 }

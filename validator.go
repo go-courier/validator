@@ -55,14 +55,14 @@ type ValidatorMgr interface {
 
 var ValidatorMgrDefault = NewValidatorFactory()
 
-const contextKeyValidatorMgr = "#####ValidatorMgr#####"
+type contextKeyValidatorMgr int
 
 func ContextWithValidatorMgr(c context.Context, validatorMgr ValidatorMgr) context.Context {
-	return context.WithValue(c, contextKeyValidatorMgr, validatorMgr)
+	return context.WithValue(c, contextKeyValidatorMgr(1), validatorMgr)
 }
 
 func ValidatorMgrFromContext(c context.Context) ValidatorMgr {
-	return c.Value(contextKeyValidatorMgr).(ValidatorMgr)
+	return c.Value(contextKeyValidatorMgr(1)).(ValidatorMgr)
 }
 
 type ValidatorCreator interface {

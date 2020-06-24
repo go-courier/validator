@@ -151,3 +151,16 @@ func TestSliceValidator_ValidateFailed(t *testing.T) {
 		}
 	}
 }
+
+func TestSliceValidator(t *testing.T) {
+	r := ValidatorMgrDefault.MustCompile(context.Background(), []byte("@slice<@float64<10,4>[-1.000,100.000]?>"), typesutil.FromRType(reflect.TypeOf([]float64{})), nil)
+	err := r.Validate([]float64{0.0004, 0, 1})
+	require.NoError(t, err)
+
+	err = r.Validate([]float64{-1.1})
+	require.Error(t, err)
+	err = r.Validate([]float64{100.1})
+	require.Error(t, err)
+	err = r.Validate([]float64{0.00005})
+	require.Error(t, err)
+}

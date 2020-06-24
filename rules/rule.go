@@ -330,7 +330,8 @@ func (s *ruleScanner) optionalAndDefaultValue() (bool, []byte, error) {
 			s.Next()
 		}
 		s.Next()
-	} else if tok != scanner.EOF {
+	} else if tok != scanner.EOF && tok != '>' && tok != ',' {
+		// end or in stmt
 		b.WriteRune(tok)
 		lit, err := s.scanLit()
 		if err != nil {
