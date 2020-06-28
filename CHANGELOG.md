@@ -5,6 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
+# [1.5.4](https://github.com/go-courier/validator/compare/v1.5.3...v1.5.4)
+
+### Bug Fixes
+
+* **fix** float decimal enhancement ([2217db5](https://github.com/go-courier/validator/commit/2217db5320322834854e01031c0bee4d7f3eb151))
+
+
+
 # [1.5.3](https://github.com/go-courier/validator/compare/v1.5.2...v1.5.3)
 
 ### Bug Fixes
