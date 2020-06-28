@@ -3,6 +3,7 @@ package validator
 import (
 	"context"
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 
@@ -211,5 +212,24 @@ func TestFloatValidator_ValidateFailed(t *testing.T) {
 				t.Log(err)
 			})
 		}
+	}
+}
+
+func TestFloat(t *testing.T) {
+	floats := [][]float64{
+		{99999.99999, 10, 5},
+		{-0.19999999999999998, 17, 17},
+		{9223372036854775808, 19, 0},
+		{340282346638528859811704183484516925440, 39, 0},
+		{math.MaxFloat64, 309, 0},
+		{math.SmallestNonzeroFloat64, 324, 324},
+	}
+
+	for i := range floats {
+		v := floats[i][0]
+		n, d := lengthOfDigits(v)
+
+		require.Equal(t, float64(n), floats[i][1])
+		require.Equal(t, float64(d), floats[i][2])
 	}
 }

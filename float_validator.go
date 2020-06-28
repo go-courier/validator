@@ -7,6 +7,7 @@ import (
 	"math"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/go-courier/ptr"
 	"github.com/go-courier/validator/errors"
@@ -107,7 +108,7 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 
 	decimalDigits := *validator.DecimalDigits
 
-	m, d := lengthOfDigits([]byte(strconv.FormatFloat(val, 'f', -1, 64)))
+	m, d := lengthOfDigits(val)
 	if m > validator.MaxDigits {
 		return &errors.OutOfRangeError{
 			Target:  TargetTotalDigitsOfFloatValue,
@@ -177,17 +178,43 @@ func (validator *FloatValidator) Validate(v interface{}) error {
 	return nil
 }
 
-func lengthOfDigits(b []byte) (uint, uint) {
-	if b[0] == '-' {
-		b = b[1:]
+func lengthOfDigits(f float64) (uint, uint) {
+	s := strconv.FormatFloat(f, 'e', -1, 64)
+	var n, d int
+
+	parts := strings.Split(s, "e")
+	nd := strings.Split(parts[0], ".")
+	i := nd[0]
+	n = len(i)
+
+	if len(nd) == 2 {
+		d = len(nd[1])
 	}
-	parts := bytes.Split(b, []byte("."))
-	n := len(parts[0])
+
 	if len(parts) == 2 {
-		d := len(bytes.TrimRight(parts[1], "0"))
-		return uint(n + d), uint(d)
+		switch parts[1][0] {
+		case '+':
+			v, _ := strconv.ParseUint(parts[1][1:], 10, 64)
+			n = n + int(v)
+			d = d - int(v)
+			if d < 0 {
+				d = 0
+			}
+		case '-':
+			v, _ := strconv.ParseUint(parts[1][1:], 10, 64)
+			n = n - int(v)
+			if n <= 0 {
+				n = 1
+			}
+			d = d + int(v)
+		}
 	}
-	return uint(n), 0
+
+	if math.Abs(f) < 1.0 {
+		n = 0
+	}
+
+	return uint(n + d), uint(d)
 }
 
 func multipleOf(v float64, div float64, decimalDigits uint) bool {
