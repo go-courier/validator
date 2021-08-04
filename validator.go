@@ -50,7 +50,7 @@ type RuleProcessor func(rule *Rule)
 // mgr for compiling validator
 type ValidatorMgr interface {
 	// compile rule string to validator
-	Compile(context.Context, []byte, typesutil.Type, RuleProcessor) (Validator, error)
+	Compile(context.Context, []byte, typesutil.Type, ...RuleProcessor) (Validator, error)
 }
 
 var ValidatorMgrDefault = NewValidatorFactory()
@@ -99,15 +99,15 @@ func (f *ValidatorFactory) Register(validators ...ValidatorCreator) {
 	}
 }
 
-func (f *ValidatorFactory) MustCompile(ctx context.Context, rule []byte, typ typesutil.Type, ruleProcessor RuleProcessor) Validator {
-	v, err := f.Compile(ctx, rule, typ, ruleProcessor)
+func (f *ValidatorFactory) MustCompile(ctx context.Context, rule []byte, typ typesutil.Type, ruleProcessors ...RuleProcessor) Validator {
+	v, err := f.Compile(ctx, rule, typ, ruleProcessors...)
 	if err != nil {
 		panic(err)
 	}
 	return v
 }
 
-func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ typesutil.Type, ruleProcessor RuleProcessor) (Validator, error) {
+func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ typesutil.Type, ruleProcessors ...RuleProcessor) (Validator, error) {
 	if ctx == nil {
 		ctx = context.Background()
 	}
@@ -130,8 +130,10 @@ func (f *ValidatorFactory) Compile(ctx context.Context, ruleBytes []byte, typ ty
 		return nil, err
 	}
 
-	if ruleProcessor != nil {
-		ruleProcessor(rule)
+	for i := range ruleProcessors {
+		if ruleProcessor := ruleProcessors[i]; ruleProcessor != nil {
+			ruleProcessor(rule)
+		}
 	}
 
 	validatorCreator, ok := f.validatorSet[rule.Name]
