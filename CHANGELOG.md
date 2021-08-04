@@ -5,6 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
+# [1.6.0](https://github.com/go-courier/validator/compare/v1.5.5...v1.6.0)
+
+### Features
+
+* **feat** enhance RuleProcessor with interface RuleModifier ([62ac3bb](https://github.com/go-courier/validator/commit/62ac3bb5dccff5808ccd6e4fab1b168596925f9f))
+
+
+
 # [1.5.5](https://github.com/go-courier/validator/compare/v1.5.4...v1.5.5)
 
 ### Bug Fixes
