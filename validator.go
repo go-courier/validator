@@ -45,7 +45,25 @@ func (r *Rule) String() string {
 	return typesutil.FullTypeName(r.Type) + string(r.Rule.Bytes())
 }
 
-type RuleProcessor func(rule *Rule)
+func (r *Rule) SetOptional(optional bool) {
+	r.Optional = optional
+}
+
+func (r *Rule) SetErrMsg(errMsg []byte) {
+	r.ErrMsg = errMsg
+}
+
+func (r *Rule) SetDefaultValue(defaultValue []byte) {
+	r.DefaultValue = defaultValue
+}
+
+type RuleModifier interface {
+	SetOptional(optional bool)
+	SetDefaultValue(defaultValue []byte)
+	SetErrMsg(errMsg []byte)
+}
+
+type RuleProcessor = func(rule RuleModifier)
 
 // mgr for compiling validator
 type ValidatorMgr interface {

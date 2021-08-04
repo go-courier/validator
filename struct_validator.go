@@ -127,15 +127,15 @@ func (validator *StructValidator) New(ctx context.Context, rule *Rule) (Validato
 			}
 		}
 
-		fieldValidator, err := mgr.Compile(ContextWithNamedTagKey(ctx, namedTagKey), []byte(tagValidateValue), field.Type(), func(rule *Rule) {
+		fieldValidator, err := mgr.Compile(ContextWithNamedTagKey(ctx, namedTagKey), []byte(tagValidateValue), field.Type(), func(rule RuleModifier) {
 			if omitempty {
-				rule.Optional = omitempty
+				rule.SetOptional(omitempty)
 			}
 			if defaultValue, ok := field.Tag().Lookup(TagDefault); ok {
-				rule.DefaultValue = []byte(defaultValue)
+				rule.SetDefaultValue([]byte(defaultValue))
 			}
 			if errMsg, ok := field.Tag().Lookup(TagErrMsg); ok {
-				rule.ErrMsg = []byte(errMsg)
+				rule.SetErrMsg([]byte(errMsg))
 			}
 		})
 
