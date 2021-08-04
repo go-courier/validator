@@ -5,6 +5,14 @@ See [Conventional Commits](https://conventionalcommits.org) for commit guideline
 
 
 
+# [1.5.5](https://github.com/go-courier/validator/compare/v1.5.4...v1.5.5)
+
+### Bug Fixes
+
+* **fix** enhance interface ValidatorMgr ([d0b9e75](https://github.com/go-courier/validator/commit/d0b9e7562d87faed8486b3b04432fff1a00c669c))
+
+
+
 # [1.5.4](https://github.com/go-courier/validator/compare/v1.5.3...v1.5.4)
 
 ### Bug Fixes
